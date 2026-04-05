@@ -1,6 +1,6 @@
 # EXEMPTION_MANIFEST.md
 **Deterministic Exemption Manifest (V1)**
-*Spec Version: 1.0.4*
+*Spec Version: 1.0.5*
 
 ---
 
@@ -10,9 +10,9 @@ The Exemption Manifest is a deterministic, append-only configuration surface tha
 
 The manifest is NOT a general override mechanism. It MUST NOT relax any architectural, graph-shape, or public-surface constraints.
 
-The manifest participates directly in budget derivation. Therefore:
+The manifest participates directly in budget derivation and execution identity. Therefore:
 * Only applicable exemptions influence budget derivation.
-* Only applicable exemptions influence run identity.
+* Only applicable exemptions influence execution identity.
 * Any change to applicable exemptions requires a new run.
 * All applied exemptions MUST be logged via `EXEMPTION_APPLIED` events.
 
@@ -109,10 +109,10 @@ An exemption entry is applicable to a given artifact if:
 Only applicable exemptions participate in:
 * budget derivation
 * `exemption_manifest_hash`
-* `run_id` computation
+* execution identity computation
 * `EXEMPTION_APPLIED` events
 
-Unrelated entries MUST NOT affect run identity or budget derivation.
+Unrelated entries MUST NOT affect execution identity or budget derivation.
 
 At most one applicable exemption MAY exist per: `(artifact_id, scope, target)`
 
@@ -162,22 +162,16 @@ Validation rules (Budget Compiler stage):
 
 ---
 
-## 8. RUN CONFIGURATION BOUNDARY
+## 8. EXECUTION IDENTITY INTEGRATION
 
-Run identity MUST depend ONLY on applicable exemptions:
+Applicable exemptions contribute to execution identity via `exemption_manifest_hash`.
 
-```text
-exemption_manifest_hash = hash(normalized(applicable_exemptions))
+The canonical definition, hash domain, and lifecycle of `run_id` are **authoritatively defined in `RUN_MODEL.md`**.
 
-run_id = hash(contract_hash,
-              global_ceilings_hash,
-              exemption_manifest_hash,
-              toolchain_hash)
-```
-
-Any change to applicable exemptions requires a new run.
-
-Changes to unrelated entries MUST NOT affect run identity.
+This document:
+* MUST NOT define `run_id`
+* MUST treat applicable exemptions as immutable within a run
+* MUST require a new run for any change to applicable exemptions
 
 ---
 
@@ -245,7 +239,7 @@ Violations MUST cause `EXEMPTION_E_INVALID_SCHEMA`.
 
 ## 13. VERSIONING
 
-`exemption_manifest_spec_version = 1.0.4`
+`exemption_manifest_spec_version = 1.0.5`
 
 Any change to:
 * entry schema
@@ -253,7 +247,7 @@ Any change to:
 * applicability rules
 * aggregation rules
 * normalization/canonicalization rules
-* integration with Budget Compiler
+* execution identity integration
 * serialization rules
 
 MUST increment the spec version.
