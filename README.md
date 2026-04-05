@@ -1,17 +1,17 @@
 <div align="center">
 
-<pre>
-    ___   _________________   __________________ 
-   /   | / ____/ ____/ | \ | / /_  __/  _/ ____/ 
-  / /| |/ / __/ __/ /  |\| |/ / / /  / // /      
- / ___ / /_/ / /___/ /|  /|  / / / _/ // /___    
-/_/  |_\____/_____/_/ |_/ |_/ /_/ /___/\____/    
+<pre style="font-weight: bold;">
+<span style="color: #ff5555">    ___ </span><span style="color: #ffb86c">  ______</span><span style="color: #f1fa8c">________</span><span style="color: #50fa7b">___   __</span><span style="color: #8be9fd">________</span><span style="color: #bd93f9">________ </span>
+<span style="color: #ff5555">   /   |</span><span style="color: #ffb86c"> / ____/</span><span style="color: #f1fa8c"> ____/ |</span><span style="color: #50fa7b"> \ | / /</span><span style="color: #8be9fd">_  __/  </span><span style="color: #bd93f9">_/ ____/ </span>
+<span style="color: #ff5555">  / /| |</span><span style="color: #ffb86c">/ / __/ </span><span style="color: #f1fa8c">__/ /  |</span><span style="color: #50fa7b">\| |/ / </span><span style="color: #8be9fd">/ /  / /</span><span style="color: #bd93f9">/ /      </span>
+<span style="color: #ff5555"> / ___ /</span><span style="color: #ffb86c"> /_/ / /</span><span style="color: #f1fa8c">___/ /| </span><span style="color: #50fa7b"> /|  / /</span><span style="color: #8be9fd"> / _/ //</span><span style="color: #bd93f9"> /___    </span>
+<span style="color: #ff5555">/_/  |_\</span><span style="color: #ffb86c">____/___</span><span style="color: #f1fa8c">__/_/ |_</span><span style="color: #50fa7b">/ |_/ /_</span><span style="color: #8be9fd">/ /___/\</span><span style="color: #bd93f9">____/    </span>
                                                  
-    __  _____    ____  _   ____________________  
-   / / / /   |  / __ \/ | / / ____/ ___/ ___/ /  
-  / /_/ / /| | / /_/ /  |/ / __/  \__ \\__ \_/   
- / __  / ___ |/ _, _/ /|  / /___ ___/ /__/ /_    
-/_/ /_/_/  |_/_/ |_/_/ |_/_____//____/____(_)    
+<span style="color: #ff5555">    __  </span><span style="color: #ffb86c">_____   </span><span style="color: #f1fa8c"> ____  _</span><span style="color: #50fa7b">   _____</span><span style="color: #8be9fd">________</span><span style="color: #bd93f9">_______  </span>
+<span style="color: #ff5555">   / / /</span><span style="color: #ffb86c"> /   |  </span><span style="color: #f1fa8c">/ __ \/ </span><span style="color: #50fa7b">| / / __</span><span style="color: #8be9fd">__/ ___/</span><span style="color: #bd93f9"> ___/ /  </span>
+<span style="color: #ff5555">  / /_/ </span><span style="color: #ffb86c">/ /| | /</span><span style="color: #f1fa8c"> /_/ /  </span><span style="color: #50fa7b">|/ / __/</span><span style="color: #8be9fd">  \__ \\</span><span style="color: #bd93f9">__ \_/   </span>
+<span style="color: #ff5555"> / __  /</span><span style="color: #ffb86c"> ___ |/ </span><span style="color: #f1fa8c">_, _/ /|</span><span style="color: #50fa7b">  / /___</span><span style="color: #8be9fd"> ___/ /_</span><span style="color: #bd93f9">_/ /_    </span>
+<span style="color: #ff5555">/_/ /_/_</span><span style="color: #ffb86c">/  |_/_/</span><span style="color: #f1fa8c"> |_/_/ |</span><span style="color: #50fa7b">_/_____/</span><span style="color: #8be9fd">/____/__</span><span style="color: #bd93f9">__(_)    </span>
 </pre>
 
 ![ARCH: AI](https://img.shields.io/badge/ARCH-AI-blueviolet)
