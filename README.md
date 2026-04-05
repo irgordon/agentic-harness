@@ -152,7 +152,7 @@ Do whatever you want — just don’t blame us if you summon Skynet.
 
 If you discover a security issue, please contact:
 
-**security@agentmem.sh**
+**agent@horoji.org**
 
 We take security seriously and will respond promptly.
 
