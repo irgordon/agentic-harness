@@ -1,6 +1,6 @@
 # LEDGER.md
 **Deterministic Ledger & Event Model (V1)**
-*Spec Version: 1.0.3*
+*Spec Version: 1.0.4*
 
 ---
 
@@ -42,11 +42,7 @@ All events MUST be emitted explicitly by the Harness.
 
 ## 3. RUN MODEL
 
-A **run** is defined by fixed versions of:
-* contract
-* global ceilings
-* exemption manifest
-* toolchain
+A **run** is defined by a fixed execution identity as specified in `RUN_MODEL.md`.
 
 A run contains up to `N` **attempts**, each consisting of:
 1. `GENERATION_ATTEMPT(i)`
@@ -69,24 +65,18 @@ Both MUST NOT occur in the same run.
 
 ## 4. RUN IDENTIFIER
 
-### 4.1 run_id Definition
+### 4.1 run_id Authority
 
-`run_id` MUST be computed deterministically as:
+`run_id` is the canonical identifier for a run and represents the **full execution identity**.
 
-```text
-run_id = hash(
-    contract_hash,
-    global_ceilings_hash,
-    exemption_manifest_hash,
-    toolchain_hash
-)
-```
+The definition, hash domain, and lifecycle of `run_id` are **authoritatively defined in `RUN_MODEL.md`**.
 
-Properties:
-* deterministic
-* reproducible across environments
-* stable across attempts within a run
-* changes only when run configuration changes
+The Ledger:
+* MUST record `run_id` on every event
+* MUST treat `run_id` as immutable within a run
+* MUST NOT define, reinterpret, or recompute `run_id`
+
+Any change to inputs that affect execution identity MUST result in a new `run_id` and therefore a new run.
 
 ---
 
@@ -149,210 +139,3 @@ All events MUST conform to the canonical schema:
   "toolchain_hash": "string or null",
   "payload": { ... }
 }
-```
-
-Rules:
-* Fields MUST appear in the exact order listed above.
-* Nulls MUST be explicit.
-* Hashes MUST be canonical digests of normalized inputs.
-* No timestamps, UUIDs, or nondeterministic metadata.
-
----
-
-## 7. EVENT PAYLOADS
-
-The attempt number is carried in the envelope (`attempt` field), NOT in payloads.
-
-### 7.1 CONTRACT_ACCEPTED
-```json
-{
-  "contract_version": "string",
-  "validation": "passed"
-}
-```
-
-### 7.2 CONTRACT_REJECTED
-```json
-{
-  "contract_version": "string",
-  "error_code": "CONTRACT_E_*",
-  "details": { }
-}
-```
-
-### 7.3 BUDGET_DERIVED
-```json
-{
-  "local_budget_hash": "string"
-}
-```
-
-### 7.4 EXEMPTION_APPLIED
-```json
-{
-  "exemption_id": "string",
-  "exemption_hash": "string"
-}
-```
-
-### 7.5 BUDGET_FAILED
-```json
-{
-  "error_code": "BUDGET_E_*",
-  "details": { }
-}
-```
-
-### 7.6 GENERATION_ATTEMPTED
-```json
-{ }
-```
-
-### 7.7 GENERATION_FAILED
-```json
-{
-  "error_code": "GEN_E_*",
-  "details": { }
-}
-```
-
-### 7.8 GENERATION_SUCCEEDED
-```json
-{
-  "candidate_artifact_hash": "string"
-}
-```
-
-### 7.9 STATIC_ANALYSIS_PASSED
-```json
-{
-  "metrics_hash": "string"
-}
-```
-
-### 7.10 STATIC_ANALYSIS_FAILED
-```json
-{
-  "error_code": "SAE_E_*",
-  "details": { }
-}
-```
-
-### 7.11 TESTS_PASSED
-```json
-{
-  "test_suite_hash": "string"
-}
-```
-
-### 7.12 TESTS_FAILED
-```json
-{
-  "error_code": "TEST_E_*",
-  "details": { }
-}
-```
-
-### 7.13 ATTEMPT_FAILED
-```json
-{
-  "reason": "generation_failed | static_analysis_failed | tests_failed | verification_failed"
-}
-```
-
-### 7.14 ATTEMPT_PASSED
-```json
-{ }
-```
-
-### 7.15 ARTIFACT_FROZEN
-```json
-{
-  "freeze_hash": "string"
-}
-```
-
-### 7.16 FREEZE_FAILED
-```json
-{
-  "error_code": "FREEZE_E_*",
-  "details": { }
-}
-```
-
-### 7.17 RUN_SUCCESS
-```json
-{
-  "attempts_used": "integer"
-}
-```
-
-### 7.18 RUN_ABORTED
-```json
-{
-  "attempts_used": "integer",
-  "error_code": "HARNESS_E_*",
-  "details": { }
-}
-```
-
----
-
-## 8. SERIALIZATION RULES
-
-### 8.1 Canonical JSON
-Events MUST be serialized using:
-* keys in the exact schema order defined in Section 6
-* no extra whitespace beyond what is required for valid JSON
-* UTF-8 encoding
-* no trailing commas
-* explicit nulls
-
-### 8.2 Append-Only
-Events MUST be appended in the exact order emitted.
-
-### 8.3 No Rewrites
-No event may be modified or deleted after emission.
-
-### 8.4 No Aggregation
-Events MUST NOT be merged or summarized.
-
----
-
-## 9. ERROR MODEL
-
-Ledger errors MUST be limited to:
-* `LEDGER_E_SERIALIZATION`
-* `LEDGER_E_APPEND_FAILURE`
-* `LEDGER_E_INVALID_EVENT_SCHEMA`
-
-The Ledger MUST NOT:
-* reinterpret subsystem errors
-* generate new error codes for gate failures
-
----
-
-## 10. CONCURRENCY MODEL
-
-The Ledger MUST operate in:
-* single-writer mode
-* serial event emission
-* no parallel writes
-* no asynchronous buffering
-
----
-
-## 11. VERSIONING
-
-`ledger_spec_version = 1.0.3`
-
-Any change to:
-* event grammar
-* event schemas
-* serialization rules
-* error codes
-* run_id definition
-
-MUST increment the spec version.
-
-END OF DOCUMENT
