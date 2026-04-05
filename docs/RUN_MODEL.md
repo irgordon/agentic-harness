@@ -1,6 +1,6 @@
 RUN_MODEL.md
 Deterministic Run & Attempt Execution Model (V1)
-Spec Version: 1.0.1
+Spec Version: 1.0.2
 
 
 ============================================================
@@ -33,6 +33,7 @@ A **run** is defined by the following fixed configuration inputs:
   • toolchain_hash
   • generator_timeout_ms
   • max_attempts
+  • generator_interface_spec_version
 
 These MUST remain constant for the entire run.
 
@@ -44,7 +45,8 @@ run_id = hash(
     exemption_manifest_hash,
     toolchain_hash,
     generator_timeout_ms,
-    max_attempts
+    max_attempts,
+    generator_interface_spec_version
 )
 
 If ANY of these change → a new run MUST be created.
@@ -69,6 +71,10 @@ Attempt numbering invariants:
   • attempts never skip values
   • attempts never repeat
   • one generator invocation == one attempt
+
+Termination rule:
+
+If attempt == max_attempts AND the attempt fails → RUN_ABORTED.
 
 
 ============================================================
@@ -106,7 +112,7 @@ The run MUST execute the following fixed state machine:
   • FREEZE
 
 Deterministic gates MUST treat inputs as unchanged if and only if their
-canonical hashes are identical.
+canonical hashes (computed over normalized inputs) are identical.
 
 Deterministic gates MUST NOT retry unchanged inputs.
 
@@ -126,8 +132,12 @@ This gate MAY produce different outputs for identical inputs.
 Before each GENERATION_ATTEMPT(i):
 
   • Construct canonical GeneratorRequest_without_id
+  • Normalize request payload using the versioned normalization spec
   • Compute request_id = hash(normalized(request_without_id))
   • Send request to generator
+
+The request normalization algorithm MUST be versioned and included in
+toolchain_hash.
 
 6.2 Response Validation
 
@@ -145,6 +155,8 @@ If status = success:
 
   • normalize candidate_artifact using the canonical normalization spec
   • normalization behavior MUST be included in toolchain_hash
+  • normalization MUST produce byte-identical output for identical
+    logical artifacts
   • compute candidate_artifact_hash
   • proceed to VERIFICATION_ATTEMPT(i)
 
@@ -184,7 +196,7 @@ If ATTEMPT_PASSED(i):
 
 If freeze fails:
 
-  • emit FREEZE_FAILED
+  • emit FREEZE_FAILED (MUST be a valid ledger event type)
   • emit RUN_ABORTED (final event)
 
 
@@ -216,6 +228,7 @@ Key invariants:
   • EXEMPTION_APPLIED events MUST match the order used in budget derivation
   • attempt events MUST reflect monotonic attempt numbering
   • terminal event MUST be unique and final
+  • FREEZE_FAILED MUST be represented exactly as defined in the ledger spec
 
 
 ============================================================
@@ -225,8 +238,6 @@ Key invariants:
 11.1 System Enforcement Boundary
 
 The Harness enforces constraints regardless of agent behavior.
-
-The agent cannot bypass deterministic gates.
 
 11.2 Agent Responsibilities
 
@@ -328,7 +339,7 @@ This forms a deterministic outer loop around a non-deterministic inner loop.
 13. VERSIONING
 ============================================================
 
-run_model_spec_version = 1.0.1
+run_model_spec_version = 1.0.2
 
 Any change to:
   • run identity rules
