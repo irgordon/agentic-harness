@@ -352,3 +352,5 @@ Any change to:
 MUST increment the spec version.
 
 END OF DOCUMENT
+
+Just tell me which artifact you want next.
