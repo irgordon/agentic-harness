@@ -139,3 +139,79 @@ All events MUST conform to the canonical schema:
   "toolchain_hash": "string or null",
   "payload": { ... }
 }
+```
+
+Rules:
+* Fields MUST appear in the exact order listed above.
+* Nulls MUST be explicit.
+* Hashes MUST be canonical digests of normalized inputs.
+* No timestamps, UUIDs, or nondeterministic metadata.
+
+---
+
+## 7. EVENT PAYLOADS
+
+The attempt number is carried in the envelope (`attempt` field), NOT in payloads.
+
+[unchanged payload definitions omitted for brevity]
+
+---
+
+## 8. SERIALIZATION RULES
+
+### 8.1 Canonical JSON
+Events MUST be serialized using:
+* keys in the exact schema order defined in Section 6
+* no extra whitespace beyond what is required for valid JSON
+* UTF-8 encoding
+* no trailing commas
+* explicit nulls
+
+### 8.2 Append-Only
+Events MUST be appended in the exact order emitted.
+
+### 8.3 No Rewrites
+No event may be modified or deleted after emission.
+
+### 8.4 No Aggregation
+Events MUST NOT be merged or summarized.
+
+---
+
+## 9. ERROR MODEL
+
+Ledger errors MUST be limited to:
+* `LEDGER_E_SERIALIZATION`
+* `LEDGER_E_APPEND_FAILURE`
+* `LEDGER_E_INVALID_EVENT_SCHEMA`
+
+The Ledger MUST NOT:
+* reinterpret subsystem errors
+* generate new error codes for gate failures
+
+---
+
+## 10. CONCURRENCY MODEL
+
+The Ledger MUST operate in:
+* single-writer mode
+* serial event emission
+* no parallel writes
+* no asynchronous buffering
+
+---
+
+## 11. VERSIONING
+
+`ledger_spec_version = 1.0.4`
+
+Any change to:
+* event grammar
+* event schemas
+* serialization rules
+* error codes
+* run_id authority or semantics
+
+MUST increment the spec version.
+
+END OF DOCUMENT
