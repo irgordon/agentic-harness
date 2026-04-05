@@ -108,6 +108,26 @@ Those documents are the authoritative source of truth.
 
 Everything is recorded in the **Ledger**, so you can replay, audit, or debug any run.
 
+```mermaid
+flowchart TD
+    Input["HUMAN / SYSTEM\nProvides Contract"] --> Contract["CONTRACT + CEILINGS + EXEMPTIONS"]
+    Contract --> Budget["BUDGET COMPILER → local_budget"]
+    Budget --> Harness["HARNESS (deterministic)"]
+    
+    subgraph ATTEMPT_LOOP ["ATTEMPT LOOP"]
+        direction TB
+        Gen["GENERATION_ATTEMPT (agent)"] --> Ver["VERIFICATION_ATTEMPT\n(budget + static analysis + tests)"]
+        Ver -- "failure" --> Gen
+    end
+    
+    Harness --> ATTEMPT_LOOP
+    
+    Ver -- "success" --> Freeze["FREEZE → canonical artifact"]
+    Ver -- "if i == max_attempts" --> Abort["RUN_ABORTED"]
+    
+    Freeze --> Success["RUN_SUCCESS"]
+```
+
 ---
 
 ## Who This Is For
