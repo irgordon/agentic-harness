@@ -1,44 +1,41 @@
-RUN_MODEL.md
-Deterministic Run & Attempt Execution Model (V1)
-Spec Version: 1.0.2
+# RUN_MODEL.md
+**Deterministic Run & Attempt Execution Model (V1)**
+*Spec Version: 1.0.2*
 
+---
 
-============================================================
-1. PURPOSE
-============================================================
+## 1. PURPOSE
 
-The Run Model defines the complete lifecycle of a Harness execution,
-including:
+The Run Model defines the complete lifecycle of a Harness execution, including:
 
-  • run identity and configuration boundaries
-  • attempt structure and numbering
-  • deterministic vs non-deterministic gate behavior
-  • freeze reproducibility guarantees
-  • ledger event ordering and terminal conditions
-  • integration with agentic generation workflows
+* run identity and configuration boundaries
+* attempt structure and numbering
+* deterministic vs non-deterministic gate behavior
+* freeze reproducibility guarantees
+* ledger event ordering and terminal conditions
+* integration with agentic generation workflows
 
-This document binds all V1 subsystems into a single normative execution
-model.
+This document binds all V1 subsystems into a single normative execution model.
 
+---
 
-============================================================
-2. RUN CONFIGURATION & IDENTITY
-============================================================
+## 2. RUN CONFIGURATION & IDENTITY
 
 A **run** is defined by the following fixed configuration inputs:
 
-  • contract_hash
-  • global_ceilings_hash
-  • exemption_manifest_hash (applicable subset only)
-  • toolchain_hash
-  • generator_timeout_ms
-  • max_attempts
-  • generator_interface_spec_version
+* `contract_hash`
+* `global_ceilings_hash`
+* `exemption_manifest_hash` (applicable subset only)
+* `toolchain_hash`
+* `generator_timeout_ms`
+* `max_attempts`
+* `generator_interface_spec_version`
 
 These MUST remain constant for the entire run.
 
 Run identity MUST include all configuration inputs that affect execution:
 
+```text
 run_id = hash(
     contract_hash,
     global_ceilings_hash,
@@ -48,41 +45,41 @@ run_id = hash(
     max_attempts,
     generator_interface_spec_version
 )
+```
 
 If ANY of these change → a new run MUST be created.
 
+---
 
-============================================================
-3. ATTEMPT MODEL
-============================================================
+## 3. ATTEMPT MODEL
 
-A run consists of up to max_attempts **attempts**.
+A run consists of up to `max_attempts` **attempts**.
 
-Each attempt i consists of exactly:
+Each attempt `i` consists of exactly:
 
-  1. GENERATION_ATTEMPT(i)
-  2. VERIFICATION_ATTEMPT(i)
+1. `GENERATION_ATTEMPT(i)`
+2. `VERIFICATION_ATTEMPT(i)`
 
 Attempt numbering invariants:
 
-  • attempts start at 1
-  • attempts begin only after successful BUDGET_DERIVATION
-  • attempts increase by exactly 1
-  • attempts never skip values
-  • attempts never repeat
-  • one generator invocation == one attempt
+* attempts start at `1`
+* attempts begin only after successful `BUDGET_DERIVATION`
+* attempts increase by exactly `1`
+* attempts never skip values
+* attempts never repeat
+* one generator invocation == one attempt
 
 Termination rule:
 
-If attempt == max_attempts AND the attempt fails → RUN_ABORTED.
+If `attempt == max_attempts` AND the attempt fails → `RUN_ABORTED`.
 
+---
 
-============================================================
-4. STATE MACHINE
-============================================================
+## 4. STATE MACHINE
 
 The run MUST execute the following fixed state machine:
 
+```text
   CONTRACT_VALIDATION
         ↓
   BUDGET_DERIVATION
@@ -98,184 +95,175 @@ The run MUST execute the following fixed state machine:
   FREEZE
         ↓
   DONE
+```
 
+---
 
-============================================================
-5. GATE CLASSES
-============================================================
+## 5. GATE CLASSES
 
-5.1 Deterministic Validation Gates (Trusted Core)
+### 5.1 Deterministic Validation Gates (Trusted Core)
 
-  • CONTRACT_VALIDATION
-  • BUDGET_DERIVATION
-  • VERIFICATION_ATTEMPT
-  • FREEZE
+* `CONTRACT_VALIDATION`
+* `BUDGET_DERIVATION`
+* `VERIFICATION_ATTEMPT`
+* `FREEZE`
 
-Deterministic gates MUST treat inputs as unchanged if and only if their
-canonical hashes (computed over normalized inputs) are identical.
+Deterministic gates MUST treat inputs as unchanged if and only if their canonical hashes (computed over normalized inputs) are identical.
 
 Deterministic gates MUST NOT retry unchanged inputs.
 
-5.2 External Acquisition Gate (Non-Deterministic)
+### 5.2 External Acquisition Gate (Non-Deterministic)
 
-  • GENERATION_ATTEMPT
+* `GENERATION_ATTEMPT`
 
 This gate MAY produce different outputs for identical inputs.
 
+---
 
-============================================================
-6. CANONICAL REQUEST & RESPONSE FLOW
-============================================================
+## 6. CANONICAL REQUEST & RESPONSE FLOW
 
-6.1 Request Construction
+### 6.1 Request Construction
 
-Before each GENERATION_ATTEMPT(i):
+Before each `GENERATION_ATTEMPT(i)`:
 
-  • Construct canonical GeneratorRequest_without_id
-  • Normalize request payload using the versioned normalization spec
-  • Compute request_id = hash(normalized(request_without_id))
-  • Send request to generator
+* Construct canonical `GeneratorRequest_without_id`
+* Normalize request payload using the versioned normalization spec
+* Compute `request_id = hash(normalized(request_without_id))`
+* Send request to generator
 
-The request normalization algorithm MUST be versioned and included in
-toolchain_hash.
+The request normalization algorithm MUST be versioned and included in `toolchain_hash`.
 
-6.2 Response Validation
+### 6.2 Response Validation
 
 The Harness MUST:
 
-  • canonicalize the response
-  • validate request_id match
-  • validate status
-  • validate null/non-null constraints
-  • treat malformed responses as GEN_E_PROTOCOL
+* canonicalize the response
+* validate `request_id` match
+* validate `status`
+* validate null/non-null constraints
+* treat malformed responses as `GEN_E_PROTOCOL`
 
-6.3 Artifact Normalization
+### 6.3 Artifact Normalization
 
-If status = success:
+If `status = success`:
 
-  • normalize candidate_artifact using the canonical normalization spec
-  • normalization behavior MUST be included in toolchain_hash
-  • normalization MUST produce byte-identical output for identical
-    logical artifacts
-  • compute candidate_artifact_hash
-  • proceed to VERIFICATION_ATTEMPT(i)
+* normalize `candidate_artifact` using the canonical normalization spec
+* normalization behavior MUST be included in `toolchain_hash`
+* normalization MUST produce byte-identical output for identical logical artifacts
+* compute `candidate_artifact_hash`
+* proceed to `VERIFICATION_ATTEMPT(i)`
 
+---
 
-============================================================
-7. VERIFICATION ATTEMPT
-============================================================
+## 7. VERIFICATION ATTEMPT
 
 Each candidate artifact is verified exactly once.
 
 Verification consists of:
 
-  1. Static Analysis Engine
-  2. Test execution (based on test_obligation_class)
+1. Static Analysis Engine
+2. Test execution (based on `test_obligation_class`)
 
 Rules:
 
-  • deterministic gates MUST NOT retry unchanged inputs
-  • failure MUST be classified as:
-        - generation_failed
-        - static_analysis_failed
-        - tests_failed
-        - verification_failed
-  • failure → ATTEMPT_FAILED(i)
-  • success → ATTEMPT_PASSED(i)
+* deterministic gates MUST NOT retry unchanged inputs
+* failure MUST be classified as:
+    * `generation_failed`
+    * `static_analysis_failed`
+    * `tests_failed`
+    * `verification_failed`
+* failure → `ATTEMPT_FAILED(i)`
+* success → `ATTEMPT_PASSED(i)`
 
+---
 
-============================================================
-8. FREEZE PHASE
-============================================================
+## 8. FREEZE PHASE
 
-If ATTEMPT_PASSED(i):
+If `ATTEMPT_PASSED(i)`:
 
-  • compute canonical freeze hash
-  • emit ARTIFACT_FROZEN
-  • emit RUN_SUCCESS (immediately after)
+* compute canonical freeze hash
+* emit `ARTIFACT_FROZEN`
+* emit `RUN_SUCCESS` (immediately after)
 
 If freeze fails:
 
-  • emit FREEZE_FAILED (MUST be a valid ledger event type)
-  • emit RUN_ABORTED (final event)
+* emit `FREEZE_FAILED` (MUST be a valid ledger event type)
+* emit `RUN_ABORTED` (final event)
 
+---
 
-============================================================
-9. TERMINAL CONDITIONS
-============================================================
+## 9. TERMINAL CONDITIONS
 
 A run MUST end with exactly one terminal event:
 
-  • RUN_SUCCESS
-  OR
-  • RUN_ABORTED
+* `RUN_SUCCESS`
+OR
+* `RUN_ABORTED`
 
-RUN_ABORTED MUST be the final event in failure cases.
+`RUN_ABORTED` MUST be the final event in failure cases.
 
-ARTIFACT_FROZEN MUST be immediately followed by RUN_SUCCESS.
+`ARTIFACT_FROZEN` MUST be immediately followed by `RUN_SUCCESS`.
 
+---
 
-============================================================
-10. LEDGER INTEGRATION
-============================================================
+## 10. LEDGER INTEGRATION
 
 The run MUST emit events according to the Ledger grammar.
 
 Key invariants:
 
-  • deterministic ordering
-  • deterministic serialization
-  • EXEMPTION_APPLIED events MUST match the order used in budget derivation
-  • attempt events MUST reflect monotonic attempt numbering
-  • terminal event MUST be unique and final
-  • FREEZE_FAILED MUST be represented exactly as defined in the ledger spec
+* deterministic ordering
+* deterministic serialization
+* `EXEMPTION_APPLIED` events MUST match the order used in budget derivation
+* attempt events MUST reflect monotonic attempt numbering
+* terminal event MUST be unique and final
+* `FREEZE_FAILED` MUST be represented exactly as defined in the ledger spec
 
+---
 
-============================================================
-11. AGENTIC WORKFLOW INTEGRATION
-============================================================
+## 11. AGENTIC WORKFLOW INTEGRATION
 
-11.1 System Enforcement Boundary
+### 11.1 System Enforcement Boundary
 
 The Harness enforces constraints regardless of agent behavior.
 
-11.2 Agent Responsibilities
+### 11.2 Agent Responsibilities
 
 The agent:
 
-  • reads the contract
-  • plans the implementation
-  • generates candidate artifacts
-  • responds to Harness feedback
-  • iterates until success or attempt limit
+* reads the contract
+* plans the implementation
+* generates candidate artifacts
+* responds to Harness feedback
+* iterates until success or attempt limit
 
-11.3 Harness Responsibilities
+### 11.3 Harness Responsibilities
 
 The Harness:
 
-  • enforces deterministic constraints
-  • rejects invalid artifacts
-  • provides structured feedback via ledger events
-  • ensures reproducibility and auditability
+* enforces deterministic constraints
+* rejects invalid artifacts
+* provides structured feedback via ledger events
+* ensures reproducibility and auditability
 
-11.4 Feedback Loop
+### 11.4 Feedback Loop
 
 The agent receives:
 
-  • GENERATION_FAILED → adjust generation strategy
-  • STATIC_ANALYSIS_FAILED → simplify structure
-  • TESTS_FAILED → fix logic
-  • ATTEMPT_FAILED → produce new artifact
-  • RUN_ABORTED → revise contract or manifest
-  • RUN_SUCCESS → finalize artifact
+* `GENERATION_FAILED` → adjust generation strategy
+* `STATIC_ANALYSIS_FAILED` → simplify structure
+* `TESTS_FAILED` → fix logic
+* `ATTEMPT_FAILED` → produce new artifact
+* `RUN_ABORTED` → revise contract or manifest
+* `RUN_SUCCESS` → finalize artifact
 
 This forms a deterministic outer loop around a non-deterministic inner loop.
 
+---
 
-============================================================
-12. REPOSITORY STRUCTURE
-============================================================
+## 12. REPOSITORY STRUCTURE
 
+```text
 /
 ├── contract/
 │   ├── contract.json
@@ -333,24 +321,21 @@ This forms a deterministic outer loop around a non-deterministic inner loop.
     ├── EXEMPTION_MANIFEST.md
     ├── STATIC_ANALYSIS_ENGINE.md
     └── GENERATOR_INTERFACE.md
+```
 
+---
 
-============================================================
-13. VERSIONING
-============================================================
+## 13. VERSIONING
 
-run_model_spec_version = 1.0.2
+`run_model_spec_version = 1.0.2`
 
 Any change to:
-  • run identity rules
-  • attempt model
-  • state machine
-  • normalization rules
-  • agent integration semantics
-  • configuration boundaries
+
+* run identity rules
+* attempt model
+* state machine
+* normalization rules
+* agent integration semantics
+* configuration boundaries
 
 MUST increment the spec version.
-
-END OF DOCUMENT
-
-Just tell me which artifact you want next.
