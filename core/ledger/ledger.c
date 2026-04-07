@@ -41,7 +41,7 @@ static char ledger_sha256_hex_digit(uint8_t nibble) {
 }
 
 static void ledger_sha256_digest_to_hex(const ledger_sha256_digest_t *digest,
-                                        char out_hex[LEDGER_SHA256_HEX_LENGTH]) {
+                                        char out_hex[LEDGER_SHA256_HEX_STORAGE_LENGTH]) {
   ledger_u64_t i;
 
   for (i = 0U; i < LEDGER_SHA256_DIGEST_SIZE; ++i) {
@@ -49,6 +49,8 @@ static void ledger_sha256_digest_to_hex(const ledger_sha256_digest_t *digest,
     out_hex[i * 2U] = ledger_sha256_hex_digit((uint8_t)(byte >> 4U));
     out_hex[(i * 2U) + 1U] = ledger_sha256_hex_digit(byte);
   }
+
+  out_hex[LEDGER_SHA256_HEX_LENGTH] = '\0';
 }
 
 static void ledger_sha256_process_block(uint32_t state[8],

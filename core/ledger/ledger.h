@@ -94,7 +94,8 @@ typedef struct ledger_static_analysis_failure_payload_t {
 
 enum {
   LEDGER_SHA256_DIGEST_SIZE = 32U,
-  LEDGER_SHA256_HEX_LENGTH = 64U
+  LEDGER_SHA256_HEX_LENGTH = 64U,
+  LEDGER_SHA256_HEX_STORAGE_LENGTH = 65U
 };
 
 typedef struct ledger_sha256_digest_t {
@@ -117,10 +118,10 @@ typedef struct ledger_event_hash_inputs_t {
  * The ledger event envelope points into this storage after population.
  */
 typedef struct ledger_event_hash_storage_t {
-  char contract_hash[LEDGER_SHA256_HEX_LENGTH];
-  char global_ceilings_hash[LEDGER_SHA256_HEX_LENGTH];
-  char exemption_manifest_hash[LEDGER_SHA256_HEX_LENGTH];
-  char toolchain_hash[LEDGER_SHA256_HEX_LENGTH];
+  char contract_hash[LEDGER_SHA256_HEX_STORAGE_LENGTH];
+  char global_ceilings_hash[LEDGER_SHA256_HEX_STORAGE_LENGTH];
+  char exemption_manifest_hash[LEDGER_SHA256_HEX_STORAGE_LENGTH];
+  char toolchain_hash[LEDGER_SHA256_HEX_STORAGE_LENGTH];
 } ledger_event_hash_storage_t;
 
 /*
