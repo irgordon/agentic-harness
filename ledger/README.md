@@ -55,3 +55,48 @@ The Ledger is the authoritative append-only, deterministic event log for a harne
 - Existing ledger records are immutable after append.
 - `run_id` and attempt envelope values are immutable once serialized per event.
 - MUST NOT persist hidden mutable state that changes canonical serialization for identical logical events.
+
+## 10. Deterministic Data Models
+
+### Ledger Event Envelope (consumed and persisted)
+- Name: `LedgerEvent`
+- Field list (ordered):
+  1. `event_type` — string — non-null
+  2. `run_id` — string — non-null
+  3. `attempt` — integer — nullable (explicit `null` when not attempt-scoped)
+  4. `artifact_id` — string — nullable
+  5. `contract_hash` — string — nullable
+  6. `global_ceilings_hash` — string — nullable
+  7. `exemption_manifest_hash` — string — nullable
+  8. `toolchain_hash` — string — nullable
+  9. `payload` — object — non-null
+- Canonical ordering rules: fields MUST serialize in the exact order listed above.
+- Hash participation rules: `*_hash` fields carry canonical digests of normalized inputs; event serialization is deterministic for replay and audit.
+- Immutability guarantees: envelope values are immutable after append.
+- Lifecycle constraints: emitted serially by harness; ordering must satisfy ledger grammar; terminal event is unique and final.
+
+### Exemption Applied Payload (consumed in `payload`)
+- Name: `ExemptionAppliedPayload`
+- Field list (ordered):
+  1. `exemption_id` — string — non-null
+  2. `exemption_hash` — string digest — non-null
+- Canonical ordering rules: payload keys serialize in schema order.
+- Hash participation rules: `exemption_hash` represents canonical digest of the applied exemption entry.
+- Immutability guarantees: immutable after event append.
+- Lifecycle constraints: emitted once per applicable exemption, after `BUDGET_DERIVED`, in derivation order.
+
+### Static Analysis Failure Payload (consumed in `payload`)
+- Name: `StaticAnalysisFailure`
+- Field list (ordered):
+  1. `error_code` — string (`SAE_E_*`) — non-null
+  2. `artifact_id` — string — non-null
+  3. `message` — string — non-null
+  4. `details` — object — non-null
+     - `metric` — string — non-null
+     - `value` — scalar/object/array — non-null
+     - `limit` — scalar/object/array — non-null
+     - `location` — string — nullable (explicit `null` allowed)
+- Canonical ordering rules: top-level keys are serialized in schema order; nested generic object keys are deterministic.
+- Hash participation rules: payload bytes participate in canonical event serialization.
+- Immutability guarantees: immutable after append.
+- Lifecycle constraints: appears only on `STATIC_ANALYSIS_FAILED` attempt events.

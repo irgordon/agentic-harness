@@ -64,3 +64,64 @@ The Harness is the deterministic orchestrator for the V1 pipeline. It enforces f
 - Run configuration inputs and `run_id` MUST be immutable within a run.
 - Attempt index MUST be strictly monotonic and immutable for completed attempts.
 - MUST NOT persist hidden mutable state that alters deterministic gate behavior for equivalent normalized inputs.
+
+## 10. Deterministic Data Models
+
+### Run Configuration (consumed)
+- Name: `RunConfiguration`
+- Field list (ordered):
+  1. `contract_hash` — string — non-null
+  2. `global_ceilings_hash` — string — non-null
+  3. `exemption_manifest_hash` — string — non-null
+  4. `toolchain_hash` — string — non-null
+  5. `generator_timeout_ms` — integer — non-null
+  6. `max_attempts` — integer — non-null
+  7. `generator_interface_spec_version` — string — non-null
+- Canonical ordering rules: run identity hash domain uses the ordered tuple listed above.
+- Hash participation rules: these fields define `run_id`.
+- Immutability guarantees: immutable for the entire run.
+- Lifecycle constraints: any change requires a new run.
+
+### Generator Request (emitted to generator interface)
+- Name: `GeneratorRequest`
+- Field list (ordered):
+  1. `request_id` — string — non-null
+  2. `run_id` — string — non-null
+  3. `attempt` — integer (`>= 1`) — non-null
+  4. `contract` — object — non-null
+  5. `local_budget` — object — non-null
+  6. `toolchain_capabilities` — object — nullable/omissible where explicitly allowed
+- Canonical ordering rules: request payload without `request_id` is normalized in schema order before hashing.
+- Hash participation rules: `request_id = hash(normalized(GeneratorRequest_without_id))`.
+- Immutability guarantees: `request_id`, `run_id`, and `attempt` are immutable once emitted.
+- Lifecycle constraints: exactly one request per attempt.
+
+### Generator Response (consumed from generator interface)
+- Name: `GeneratorResponse`
+- Field list (ordered):
+  1. `request_id` — string — non-null
+  2. `status` — enum (`success | failure`) — non-null
+  3. `candidate_artifact` — opaque artifact — nullable (non-null only when `status=success`)
+  4. `error_code` — string (`GEN_E_*`) — nullable (non-null only when `status=failure`)
+  5. `error_details` — object — nullable
+- Canonical ordering rules: response is canonicalized before validation.
+- Hash participation rules: successful `candidate_artifact` is normalized and hashed to `candidate_artifact_hash`; `request_id` must match the sent request.
+- Immutability guarantees: consumed as immutable response for attempt classification.
+- Lifecycle constraints: exactly one response per request.
+
+### Ledger Event Envelope (emitted)
+- Name: `LedgerEvent`
+- Field list (ordered):
+  1. `event_type` — string — non-null
+  2. `run_id` — string — non-null
+  3. `attempt` — integer — nullable (explicit `null` when not attempt-scoped)
+  4. `artifact_id` — string — nullable
+  5. `contract_hash` — string — nullable
+  6. `global_ceilings_hash` — string — nullable
+  7. `exemption_manifest_hash` — string — nullable
+  8. `toolchain_hash` — string — nullable
+  9. `payload` — object — non-null
+- Canonical ordering rules: fields serialize in the exact order shown above.
+- Hash participation rules: `*_hash` fields carry canonical digests of normalized inputs; event bytes are canonicalized for deterministic replay.
+- Immutability guarantees: emitted events are immutable and append-only.
+- Lifecycle constraints: event order follows run-model grammar, attempt monotonicity, and single terminal-event rule.

@@ -68,3 +68,71 @@ The Budget Compiler is a deterministic trusted-core subsystem that validates a c
 - MUST treat all input objects as immutable.
 - MUST NOT persist caches, learned heuristics, environment snapshots, or hidden derivation state.
 - Output budget is immutable after emission within the run.
+
+## 10. Deterministic Data Models
+
+### Contract (consumed)
+- Name: `Contract`
+- Field list (ordered):
+  1. `artifact_id` — string — non-null
+  2. `artifact_kind` — enum (`pure_function | stateful_module | orchestrator | adapter | io_boundary`) — non-null
+  3. `public_surface_target` — integer (`>= 0`) — non-null
+  4. `is_stateful` — boolean — non-null
+  5. `has_io` — boolean — non-null
+  6. `has_concurrency` — boolean — non-null
+  7. `declared_state_count` — integer (`>= 0`) — non-null
+  8. `declared_transition_count` — integer (`>= 0`) — non-null
+  9. `declared_invariant_count` — integer (`>= 0`) — non-null
+  10. `test_obligation_class` — enum (`light | normal | heavy`) — non-null
+- Canonical ordering rules: keys follow the contract schema order shown above.
+- Hash participation rules: normalized `Contract` bytes define `contract_hash`, which participates in `run_id`.
+- Immutability guarantees: treated as immutable input by Budget Compiler.
+- Lifecycle constraints: any change requires a new run configuration.
+
+### Global Ceilings (consumed)
+- Name: `GlobalCeilings`
+- Field list (ordered):
+  1. `max_lines_per_function` — integer (`>= 0`) — non-null
+  2. `max_nesting_depth` — integer (`>= 0`) — non-null
+  3. `max_cyclomatic_complexity` — integer (`>= 0`) — non-null
+  4. `max_fan_out` — integer (`>= 0`) — non-null
+  5. `max_file_size` — integer (`>= 0`) — non-null
+  6. `max_public_surface` — integer (`>= 0`) — non-null
+  7. `max_states` — integer (`>= 0`) — non-null
+  8. `max_transitions_per_state` — integer (`>= 0`) — non-null
+- Canonical ordering rules: keys are serialized in schema order.
+- Hash participation rules: normalized `GlobalCeilings` bytes define `global_ceilings_hash`, which participates in `run_id`.
+- Immutability guarantees: treated as immutable input by Budget Compiler.
+- Lifecycle constraints: any change requires a new run configuration.
+
+### Applicable Exemption Entry (consumed)
+- Name: `ExemptionEntry`
+- Field list (ordered):
+  1. `exemption_id` — string — non-null
+  2. `artifact_id` — string — non-null
+  3. `scope` — enum (`function | module`) — non-null
+  4. `target` — string — non-null
+  5. `reason` — string — non-null
+  6. `max_lines_per_function_override` — integer — nullable (explicit `null` allowed)
+  7. `max_file_size_override` — integer — nullable (explicit `null` allowed)
+- Canonical ordering rules: entry keys follow schema order; applicable entries are ordered by `(artifact_id, scope, target, exemption_id)` before hashing and derivation.
+- Hash participation rules: normalized applicable entry sequence defines `exemption_manifest_hash`, which participates in `run_id`; each applicable entry also participates in per-entry exemption hashing for `EXEMPTION_APPLIED`.
+- Immutability guarantees: entries are immutable inputs; manifest membership is append-only.
+- Lifecycle constraints: only applicable entries for the artifact participate; any change to applicable entries requires a new run.
+
+### Local Budget (produced)
+- Name: `LocalBudget`
+- Field list (ordered):
+  1. `artifact_id` — string — non-null
+  2. `max_lines_per_function` — integer (`>= 0`) — non-null
+  3. `max_nesting_depth` — integer (`>= 0`) — non-null
+  4. `max_cyclomatic_complexity` — integer (`>= 0`) — non-null
+  5. `max_fan_out` — integer (`>= 0`) — non-null
+  6. `max_file_size` — integer (`>= 0`) — non-null
+  7. `max_public_surface` — integer (`>= 0`) — non-null
+  8. `max_states` — integer (`>= 0`) — non-null
+  9. `max_transitions_per_state` — integer (`>= 0`) — non-null
+- Canonical ordering rules: keys follow the emitted budget schema order shown above.
+- Hash participation rules: when included in `GeneratorRequest_without_id`, normalized `LocalBudget` bytes participate in `request_id` computation.
+- Immutability guarantees: immutable after deterministic emission within a run.
+- Lifecycle constraints: emitted only after `BUDGET_DERIVATION`; consumed by generation and verification phases in the same run.
