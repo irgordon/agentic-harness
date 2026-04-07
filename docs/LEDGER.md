@@ -1,6 +1,6 @@
 # LEDGER.md
-**Deterministic Ledger & Event Model (V1)**
-*Spec Version: 1.0.4*
+**Deterministic Ledger & Event Model (V1)**  
+**Spec Version: 1.0.5**
 
 ---
 
@@ -149,6 +149,23 @@ Rules:
 
 ---
 
+## 6.1 HASH ALGORITHM AND DIGEST ENCODING
+
+All hash fields in the event envelope  
+(`contract_hash`, `global_ceilings_hash`, `exemption_manifest_hash`, `toolchain_hash`)  
+MUST be computed using the following fixed specification:
+
+* **Algorithm:** SHA-256
+* **Input domain:** the exact UTF-8 byte sequence of the authoritative normalized JSON for the referenced object  
+  (no BOM, no implicit newline, no trailing whitespace unless present in the normalized form)
+* **Output encoding:** lowercase hexadecimal encoding of the 32-byte digest  
+  (exactly 64 hex characters, no prefix such as `0x` or `sha256:`)
+
+No algorithm agility is permitted.  
+Any change to the hash algorithm or digest encoding is a **breaking change** and MUST increment `ledger_spec_version`.
+
+---
+
 ## 7. EVENT PAYLOADS
 
 The attempt number is carried in the envelope (`attempt` field), NOT in payloads.
@@ -203,7 +220,7 @@ The Ledger MUST operate in:
 
 ## 11. VERSIONING
 
-`ledger_spec_version = 1.0.4`
+`ledger_spec_version = 1.0.5`
 
 Any change to:
 * event grammar
@@ -211,6 +228,7 @@ Any change to:
 * serialization rules
 * error codes
 * run_id authority or semantics
+* hash algorithm or digest encoding
 
 MUST increment the spec version.
 
