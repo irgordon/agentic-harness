@@ -92,4 +92,21 @@ typedef struct ledger_static_analysis_failure_payload_t {
   ledger_static_analysis_failure_details_t details;
 } ledger_static_analysis_failure_payload_t;
 
+enum { LEDGER_SHA256_DIGEST_SIZE = 32U };
+
+typedef struct ledger_sha256_digest_t {
+  uint8_t bytes[LEDGER_SHA256_DIGEST_SIZE];
+} ledger_sha256_digest_t;
+
+/*
+ * docs/LEDGER.md section 6.1:
+ * * **Algorithm:** SHA-256
+ * * **Input domain:** the exact UTF-8 byte sequence of the authoritative normalized JSON
+ *   for the referenced object (no BOM, no implicit newline, no trailing whitespace unless
+ *   present in the normalized form)
+ */
+void ledger_sha256_digest(const uint8_t *input_bytes,
+                          ledger_u64_t input_length,
+                          ledger_sha256_digest_t *out_digest);
+
 #endif /* CORE_LEDGER_LEDGER_H */
