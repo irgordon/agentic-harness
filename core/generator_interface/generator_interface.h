@@ -39,6 +39,25 @@ typedef enum gi_generator_status_t {
 } gi_generator_status_t;
 
 /*
+ * Deterministic error registry (wire-level identifiers).
+ *
+ * docs/GENERATOR_INTERFACE.md section 10:
+ * Suggested codes (non-exhaustive):
+ * * `GEN_E_TIMEOUT`
+ * * `GEN_E_INTERNAL`
+ * * `GEN_E_PROTOCOL`
+ * * `GEN_E_UNSUPPORTED_CONTRACT`
+ * * `GEN_E_RESOURCE_LIMIT`
+ */
+typedef enum gi_error_code_t {
+  GEN_E_TIMEOUT = 4000,
+  GEN_E_INTERNAL = 4001,
+  GEN_E_PROTOCOL = 4002,
+  GEN_E_UNSUPPORTED_CONTRACT = 4003,
+  GEN_E_RESOURCE_LIMIT = 4004
+} gi_error_code_t;
+
+/*
  * GeneratorRequest_without_id (consumed for identity derivation)
  * Field order is canonical and matches docs/NORMALIZATION_SPEC.md section 7.1.
  */

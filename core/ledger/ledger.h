@@ -30,18 +30,20 @@ typedef struct ledger_optional_string_t {
   ledger_string_t value;
 } ledger_optional_string_t;
 
-typedef enum ledger_sae_error_code_t {
-  LEDGER_SAE_ERROR_PARSE_ERROR = 0,
-  LEDGER_SAE_ERROR_LINES_PER_FUNCTION = 1,
-  LEDGER_SAE_ERROR_NESTING_DEPTH = 2,
-  LEDGER_SAE_ERROR_CYCLOMATIC_COMPLEXITY = 3,
-  LEDGER_SAE_ERROR_FAN_OUT = 4,
-  LEDGER_SAE_ERROR_FILE_SIZE = 5,
-  LEDGER_SAE_ERROR_PUBLIC_SURFACE = 6,
-  LEDGER_SAE_ERROR_STATE_COUNT = 7,
-  LEDGER_SAE_ERROR_TRANSITION_COUNT = 8,
-  LEDGER_SAE_ERROR_INTERNAL_ERROR = 9
-} ledger_sae_error_code_t;
+/*
+ * Deterministic error registry (wire-level identifiers).
+ *
+ * docs/LEDGER.md section 9:
+ * Ledger errors MUST be limited to:
+ * * `LEDGER_E_SERIALIZATION`
+ * * `LEDGER_E_APPEND_FAILURE`
+ * * `LEDGER_E_INVALID_EVENT_SCHEMA`
+ */
+typedef enum ledger_error_code_t {
+  LEDGER_E_SERIALIZATION = 5000,
+  LEDGER_E_APPEND_FAILURE = 5001,
+  LEDGER_E_INVALID_EVENT_SCHEMA = 5002
+} ledger_error_code_t;
 
 /*
  * Ledger event envelope (consumed and persisted)
@@ -84,7 +86,7 @@ typedef struct ledger_static_analysis_failure_details_t {
  * StaticAnalysisFailure payload for STATIC_ANALYSIS_FAILED.
  */
 typedef struct ledger_static_analysis_failure_payload_t {
-  ledger_sae_error_code_t error_code;
+  ledger_string_t error_code;
   ledger_string_t artifact_id;
   ledger_string_t message;
   ledger_static_analysis_failure_details_t details;

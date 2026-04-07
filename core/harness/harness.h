@@ -44,6 +44,22 @@ typedef enum harness_generator_status_t {
 } harness_generator_status_t;
 
 /*
+ * Deterministic error registry (wire-level identifiers).
+ *
+ * docs/HARNESS.md section 11:
+ * * `HARNESS_E_INVALID_STATE`
+ * * `HARNESS_E_UNEXPECTED_INPUT`
+ * * `HARNESS_E_MAX_ATTEMPTS_EXCEEDED`
+ * Wrapped subsystem errors use `HARNESS_E_GATE_FAILURE`.
+ */
+typedef enum harness_error_code_t {
+  HARNESS_E_INVALID_STATE = 3000,
+  HARNESS_E_UNEXPECTED_INPUT = 3001,
+  HARNESS_E_MAX_ATTEMPTS_EXCEEDED = 3002,
+  HARNESS_E_GATE_FAILURE = 3003
+} harness_error_code_t;
+
+/*
  * RunConfiguration (consumed)
  * These fields define run_id and are immutable for the entire run.
  * Field order is canonical and matches docs/RUN_MODEL.md section 2.
