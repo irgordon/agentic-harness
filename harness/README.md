@@ -70,10 +70,10 @@ The Harness is the deterministic orchestrator for the V1 pipeline. It enforces f
 ### Run Configuration (consumed)
 - Name: `RunConfiguration`
 - Field list (ordered):
-  1. `contract_hash` — string digest — non-null
-  2. `global_ceilings_hash` — string digest — non-null
-  3. `exemption_manifest_hash` — string digest — non-null
-  4. `toolchain_hash` — string digest — non-null
+  1. `contract_hash` — string — non-null
+  2. `global_ceilings_hash` — string — non-null
+  3. `exemption_manifest_hash` — string — non-null
+  4. `toolchain_hash` — string — non-null
   5. `generator_timeout_ms` — integer — non-null
   6. `max_attempts` — integer — non-null
   7. `generator_interface_spec_version` — string — non-null
@@ -85,8 +85,8 @@ The Harness is the deterministic orchestrator for the V1 pipeline. It enforces f
 ### Generator Request (emitted to generator interface)
 - Name: `GeneratorRequest`
 - Field list (ordered):
-  1. `request_id` — string digest — non-null
-  2. `run_id` — string digest — non-null
+  1. `request_id` — string — non-null
+  2. `run_id` — string — non-null
   3. `attempt` — integer (`>= 1`) — non-null
   4. `contract` — object — non-null
   5. `local_budget` — object — non-null
@@ -99,7 +99,7 @@ The Harness is the deterministic orchestrator for the V1 pipeline. It enforces f
 ### Generator Response (consumed from generator interface)
 - Name: `GeneratorResponse`
 - Field list (ordered):
-  1. `request_id` — string digest — non-null
+  1. `request_id` — string — non-null
   2. `status` — enum (`success | failure`) — non-null
   3. `candidate_artifact` — opaque artifact — nullable (non-null only when `status=success`)
   4. `error_code` — string (`GEN_E_*`) — nullable (non-null only when `status=failure`)
@@ -113,13 +113,13 @@ The Harness is the deterministic orchestrator for the V1 pipeline. It enforces f
 - Name: `LedgerEvent`
 - Field list (ordered):
   1. `event_type` — string — non-null
-  2. `run_id` — string digest — non-null
+  2. `run_id` — string — non-null
   3. `attempt` — integer — nullable (explicit `null` when not attempt-scoped)
   4. `artifact_id` — string — nullable
-  5. `contract_hash` — string digest — nullable
-  6. `global_ceilings_hash` — string digest — nullable
-  7. `exemption_manifest_hash` — string digest — nullable
-  8. `toolchain_hash` — string digest — nullable
+  5. `contract_hash` — string — nullable
+  6. `global_ceilings_hash` — string — nullable
+  7. `exemption_manifest_hash` — string — nullable
+  8. `toolchain_hash` — string — nullable
   9. `payload` — object — non-null
 - Canonical ordering rules: fields serialize in the exact order shown above.
 - Hash participation rules: `*_hash` fields carry canonical digests of normalized inputs; event bytes are canonicalized for deterministic replay.

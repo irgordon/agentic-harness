@@ -71,7 +71,7 @@ The Generator Interface defines the boundary contract between the deterministic 
 ### Generator Request Without ID (consumed for identity derivation)
 - Name: `GeneratorRequest_without_id`
 - Field list (ordered):
-  1. `run_id` — string digest — non-null
+  1. `run_id` — string — non-null
   2. `attempt` — integer (`>= 1`) — non-null
   3. `contract` — object — non-null
   4. `local_budget` — object — non-null
@@ -84,8 +84,8 @@ The Generator Interface defines the boundary contract between the deterministic 
 ### Generator Request (emitted)
 - Name: `GeneratorRequest`
 - Field list (ordered):
-  1. `request_id` — string digest — non-null
-  2. `run_id` — string digest — non-null
+  1. `request_id` — string — non-null
+  2. `run_id` — string — non-null
   3. `attempt` — integer (`>= 1`) — non-null
   4. `contract` — object — non-null
   5. `local_budget` — object — non-null
@@ -98,7 +98,7 @@ The Generator Interface defines the boundary contract between the deterministic 
 ### Generator Response (consumed)
 - Name: `GeneratorResponse`
 - Field list (ordered):
-  1. `request_id` — string digest — non-null
+  1. `request_id` — string — non-null
   2. `status` — enum (`success | failure`) — non-null
   3. `candidate_artifact` — opaque artifact — nullable (required non-null when `status=success`)
   4. `error_code` — string (`GEN_E_*`) — nullable (required non-null when `status=failure`)
