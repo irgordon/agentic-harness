@@ -26,3 +26,27 @@ The Normalization subsystem defines and applies canonical normalization rules so
 ## Failure Modes
 - Any deviation from the canonical normalization rules invalidates deterministic equivalence and causes consuming deterministic gates to fail their validation contracts.
 - V1 authoritative documents define no standalone normalization-specific error-code namespace.
+
+## 6. Implementation Boundary
+- MAY implement canonical text, JSON, request, configuration, and artifact normalization exactly as specified.
+- MAY implement deterministic byte emission for all hash domains that require normalized inputs.
+- MUST NOT implement policy decisions, gate pass/fail decisions, semantic interpretation, or subsystem-specific business rules.
+- Responsibility ends at returning normalized bytes/representations or signaling normalization contract violation to the caller.
+
+## 7. Forbidden Responsibilities
+- MUST NEVER rewrite program semantics, reorder statements, or apply unspecified formatting transforms.
+- MUST NEVER introduce implicit defaults, nondeterministic metadata, or environment-derived fields.
+- MUST NEVER redefine hash domains, spec key order, or run/attempt lifecycle rules.
+- MUST NEVER mutate source configuration membership (contract, ceilings, manifest) beyond canonical representation.
+
+## 8. External Dependencies
+- MAY depend on authoritative schema ordering and normalization-spec rules as read-only inputs.
+- MAY serve `harness`, `generator_interface`, `budget_compiler`, `freeze`, and `ledger` as a read-only canonicalization service.
+- MUST NOT depend on generator internals, agent state, or nondeterministic external services.
+- MUST NOT require write access to subsystem-owned state to produce normalized output.
+
+## 9. State & Mutability Rules
+- MUST be stateless across invocations.
+- MUST treat input values as immutable and produce new canonical output representations.
+- MUST NOT persist caches that affect canonical output across runs.
+- MUST NOT persist transient parser/serializer state as durable execution state.
