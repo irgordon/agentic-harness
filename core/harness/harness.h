@@ -37,6 +37,7 @@ typedef struct harness_optional_u64_t {
 
 enum { HARNESS_MIN_ATTEMPT_NUMBER = 1U };
 
+/* Response status values from docs/GENERATOR_INTERFACE.md section 4. */
 typedef enum harness_generator_status_t {
   HARNESS_GENERATOR_STATUS_SUCCESS = 0,
   HARNESS_GENERATOR_STATUS_FAILURE = 1

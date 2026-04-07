@@ -32,6 +32,7 @@ typedef struct gi_optional_string_t {
 
 enum { GI_MIN_ATTEMPT_NUMBER = 1U };
 
+/* Response status values from docs/GENERATOR_INTERFACE.md section 4. */
 typedef enum gi_generator_status_t {
   GI_GENERATOR_STATUS_SUCCESS = 0,
   GI_GENERATOR_STATUS_FAILURE = 1

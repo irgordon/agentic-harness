@@ -19,6 +19,7 @@ typedef struct budget_optional_u64_t {
   budget_u64_t value;
 } budget_optional_u64_t;
 
+/* artifact_kind values from docs/ARCHITECTURE.md section 4 contract schema. */
 typedef enum budget_artifact_kind_t {
   BUDGET_ARTIFACT_KIND_PURE_FUNCTION = 0,
   BUDGET_ARTIFACT_KIND_STATEFUL_MODULE = 1,
@@ -27,12 +28,14 @@ typedef enum budget_artifact_kind_t {
   BUDGET_ARTIFACT_KIND_IO_BOUNDARY = 4
 } budget_artifact_kind_t;
 
+/* test_obligation_class values from docs/ARCHITECTURE.md section 4 contract schema. */
 typedef enum budget_test_obligation_class_t {
   BUDGET_TEST_OBLIGATION_CLASS_LIGHT = 0,
   BUDGET_TEST_OBLIGATION_CLASS_NORMAL = 1,
   BUDGET_TEST_OBLIGATION_CLASS_HEAVY = 2
 } budget_test_obligation_class_t;
 
+/* Exemption scope values from docs/EXEMPTION_MANIFEST.md section 5 entry schema. */
 typedef enum budget_exemption_scope_t {
   BUDGET_EXEMPTION_SCOPE_FUNCTION = 0,
   BUDGET_EXEMPTION_SCOPE_MODULE = 1

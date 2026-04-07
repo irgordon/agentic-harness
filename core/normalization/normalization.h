@@ -30,6 +30,7 @@ typedef struct normalization_optional_u64_t {
   normalization_u64_t value;
 } normalization_optional_u64_t;
 
+/* Exemption scope values from docs/EXEMPTION_MANIFEST.md section 5 entry schema. */
 typedef enum normalization_exemption_scope_t {
   NORMALIZATION_EXEMPTION_SCOPE_FUNCTION = 0,
   NORMALIZATION_EXEMPTION_SCOPE_MODULE = 1
