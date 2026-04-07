@@ -38,3 +38,30 @@ The Generator Interface defines the boundary contract between the deterministic 
 - Protocol/shape mismatch: `GEN_E_PROTOCOL`.
 - Other generator failures use `GEN_E_*` namespace (for example `GEN_E_INTERNAL`, `GEN_E_UNSUPPORTED_CONTRACT`, `GEN_E_RESOURCE_LIMIT`).
 - Oversize artifact rejection before verification is treated as harness-level failure with `ATTEMPT_FAILED` reason `verification_failed`.
+
+## 6. Implementation Boundary
+- MAY implement canonical generator request construction, deterministic `request_id` derivation, and response-shape validation.
+- MAY implement deterministic timeout/protocol failure classification at the interface boundary.
+- MAY implement isolation enforcement at the interface contract boundary.
+- MUST NOT implement generator model behavior, budget derivation, static analysis, test execution, freeze hashing, or ledger event grammar.
+- Responsibility ends at validated `GeneratorResponse` handoff or generator-failure classification for the current attempt.
+
+## 7. Forbidden Responsibilities
+- MUST NEVER assume generator reproducibility in V1.
+- MUST NEVER mutate contract, local budget, exemption data, run identity inputs, or ledger state.
+- MUST NEVER reinterpret attempt numbering semantics defined by the run model.
+- MUST NEVER accept malformed response field constraints as success.
+- MUST NEVER bypass harness deterministic verification gates.
+
+## 8. External Dependencies
+- MAY depend on `harness`-provided run/attempt context, contract, local budget, and timeout configuration as read-only inputs.
+- MAY depend on normalization rules as read-only rules for request canonicalization and identity hashing.
+- MAY interact with external generator as write-only request / read-only response exchange.
+- MUST NOT depend on `ledger`, `static_analysis`, `budget_compiler`, or `freeze` internals to validate protocol conformance.
+- MUST NOT depend on generator-side hidden state for deterministic interface validation.
+
+## 9. State & Mutability Rules
+- MAY hold per-attempt transient request/response state only.
+- Request identity fields (`request_id`, `run_id`, `attempt`) are immutable once request is emitted.
+- MUST NOT persist generator-internal state as trusted deterministic state.
+- MUST NOT persist mutable cross-run interface state that changes protocol validation behavior for identical normalized inputs.

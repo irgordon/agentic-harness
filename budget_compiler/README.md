@@ -44,3 +44,27 @@ The Budget Compiler is a deterministic trusted-core subsystem that validates a c
   - `BUDGET_E_FORBIDDEN_OVERRIDE`
   - `BUDGET_E_OVERRIDE_EXCEEDS_CEILING`
 - Rejects invalid internal rule table with `BUDGET_E_INTERNAL_RULE_TABLE_INVALID`.
+
+## 6. Implementation Boundary
+- MAY implement deterministic contract/ceiling/exemption validation required for budget derivation.
+- MAY implement deterministic local-budget derivation and compatibility rejection for declared inputs only.
+- MUST NOT implement harness orchestration, attempt lifecycle control, ledger emission policy, generator invocation, static analysis, test execution, or freeze hashing.
+- Responsibility ends at emitting deterministic budget output or deterministic budget rejection.
+
+## 7. Forbidden Responsibilities
+- MUST NEVER interpret generator behavior, candidate artifact semantics, or test outcomes.
+- MUST NEVER relax constraints outside V1 exemption scope (`max_lines_per_function`, `max_file_size` only).
+- MUST NEVER define or reinterpret `run_id`, attempt numbering, or ledger grammar.
+- MUST NEVER mutate contract, global ceilings, exemption manifest membership, or prior gate artifacts.
+
+## 8. External Dependencies
+- MAY depend on validated contract, validated global ceilings, and applicable exemptions as read-only inputs.
+- MAY depend on canonical normalization/hashing rules as read-only rules for deterministic input identity.
+- MUST NOT depend on `generator_interface`, `static_analysis`, `freeze`, or `ledger` for derivation decisions.
+- Interaction with `harness` is input/output only: read-only inputs from harness, write-only budget result back to harness.
+
+## 9. State & Mutability Rules
+- MUST operate as a pure, stateless function per invocation.
+- MUST treat all input objects as immutable.
+- MUST NOT persist caches, learned heuristics, environment snapshots, or hidden derivation state.
+- Output budget is immutable after emission within the run.
