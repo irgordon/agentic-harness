@@ -66,17 +66,33 @@ typedef struct sae_structural_metrics_t {
   sae_u64_t transition_count;
 } sae_structural_metrics_t;
 
+/*
+ * Deterministic error registry (wire-level identifiers).
+ *
+ * docs/STATIC_ANALYSIS_ENGINE.md section 4.3:
+ * Required Error Codes
+ * * `SAE_E_PARSE_ERROR`
+ * * `SAE_E_LINES_PER_FUNCTION`
+ * * `SAE_E_NESTING_DEPTH`
+ * * `SAE_E_CYCLOMATIC_COMPLEXITY`
+ * * `SAE_E_FAN_OUT`
+ * * `SAE_E_FILE_SIZE`
+ * * `SAE_E_PUBLIC_SURFACE`
+ * * `SAE_E_STATE_COUNT`
+ * * `SAE_E_TRANSITION_COUNT`
+ * * `SAE_E_INTERNAL_ERROR`
+ */
 typedef enum sae_error_code_t {
-  SAE_ERROR_PARSE_ERROR = 0,
-  SAE_ERROR_LINES_PER_FUNCTION = 1,
-  SAE_ERROR_NESTING_DEPTH = 2,
-  SAE_ERROR_CYCLOMATIC_COMPLEXITY = 3,
-  SAE_ERROR_FAN_OUT = 4,
-  SAE_ERROR_FILE_SIZE = 5,
-  SAE_ERROR_PUBLIC_SURFACE = 6,
-  SAE_ERROR_STATE_COUNT = 7,
-  SAE_ERROR_TRANSITION_COUNT = 8,
-  SAE_ERROR_INTERNAL_ERROR = 9
+  SAE_E_PARSE_ERROR = 2000,
+  SAE_E_LINES_PER_FUNCTION = 2001,
+  SAE_E_NESTING_DEPTH = 2002,
+  SAE_E_CYCLOMATIC_COMPLEXITY = 2003,
+  SAE_E_FAN_OUT = 2004,
+  SAE_E_FILE_SIZE = 2005,
+  SAE_E_PUBLIC_SURFACE = 2006,
+  SAE_E_STATE_COUNT = 2007,
+  SAE_E_TRANSITION_COUNT = 2008,
+  SAE_E_INTERNAL_ERROR = 2009
 } sae_error_code_t;
 
 /*
