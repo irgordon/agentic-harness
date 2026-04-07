@@ -50,3 +50,36 @@ The Freeze subsystem is a deterministic trusted-core subsystem that finalizes a 
 - MUST treat all freeze inputs as immutable within the run.
 - MUST NOT persist mutable freeze working state across runs.
 - Emitted freeze result is immutable after gate completion.
+
+## 10. Deterministic Data Models
+
+### Freeze Input Bundle (consumed)
+- Name: `FreezeInputs`
+- Field list (ordered):
+  1. `candidate_artifact` — normalized byte representation — non-null
+  2. `contract` — object — non-null
+  3. `global_ceilings` — object — non-null
+  4. `exemption_manifest` — object/array (applicable subset) — non-null
+  5. `toolchain_version` — string — non-null
+- Canonical ordering rules: `candidate_artifact` is canonicalized before freeze; JSON/object inputs use their canonical ordering rules from their owning specs.
+- Hash participation rules: freeze hash is computed over normalized artifact representation with run-fixed inputs and toolchain.
+- Immutability guarantees: all inputs are immutable for the freeze invocation.
+- Lifecycle constraints: freeze executes only after `ATTEMPT_PASSED`; inputs remain run-fixed.
+
+### Artifact Frozen Payload (produced)
+- Name: `ArtifactFrozen`
+- Field list (ordered):
+  1. `freeze_hash` — string digest — non-null
+- Canonical ordering rules: payload fields serialize deterministically in schema order.
+- Hash participation rules: `freeze_hash` is the canonical hash output of the freeze phase and is part of the audit trail.
+- Immutability guarantees: immutable once emitted.
+- Lifecycle constraints: emitted exactly in the freeze phase and immediately followed by `RUN_SUCCESS`.
+
+### Freeze Failure Payload (produced)
+- Name: `FreezeFailure`
+- Field list (ordered):
+  1. `error_code` — string (`FREEZE_E_*`) — non-null
+- Canonical ordering rules: deterministic field ordering for serialized payload.
+- Hash participation rules: participates in canonical ledger event serialization for failure traceability.
+- Immutability guarantees: immutable once emitted.
+- Lifecycle constraints: emitted only on freeze failure and followed by terminal `RUN_ABORTED`.

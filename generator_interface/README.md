@@ -65,3 +65,54 @@ The Generator Interface defines the boundary contract between the deterministic 
 - Request identity fields (`request_id`, `run_id`, `attempt`) are immutable once request is emitted.
 - MUST NOT persist generator-internal state as trusted deterministic state.
 - MUST NOT persist mutable cross-run interface state that changes protocol validation behavior for identical normalized inputs.
+
+## 10. Deterministic Data Models
+
+### Generator Request Without ID (consumed for identity derivation)
+- Name: `GeneratorRequest_without_id`
+- Field list (ordered):
+  1. `run_id` — string digest — non-null
+  2. `attempt` — integer (`>= 1`) — non-null
+  3. `contract` — object — non-null
+  4. `local_budget` — object — non-null
+  5. `toolchain_capabilities` — object — nullable/omissible where explicitly allowed
+- Canonical ordering rules: normalized in the top-level schema order listed above; nested objects follow their schema order or deterministic generic ordering.
+- Hash participation rules: normalized bytes are the sole input to `request_id`.
+- Immutability guarantees: treated as immutable for request hashing.
+- Lifecycle constraints: built once per attempt before generator invocation.
+
+### Generator Request (emitted)
+- Name: `GeneratorRequest`
+- Field list (ordered):
+  1. `request_id` — string digest — non-null
+  2. `run_id` — string digest — non-null
+  3. `attempt` — integer (`>= 1`) — non-null
+  4. `contract` — object — non-null
+  5. `local_budget` — object — non-null
+  6. `toolchain_capabilities` — object — nullable/omissible where explicitly allowed
+- Canonical ordering rules: key order follows schema order.
+- Hash participation rules: `request_id` equals hash of normalized `GeneratorRequest_without_id`.
+- Immutability guarantees: request identity fields are immutable once sent.
+- Lifecycle constraints: exactly one request per attempt; attempt numbers are strictly monotonic.
+
+### Generator Response (consumed)
+- Name: `GeneratorResponse`
+- Field list (ordered):
+  1. `request_id` — string digest — non-null
+  2. `status` — enum (`success | failure`) — non-null
+  3. `candidate_artifact` — opaque artifact — nullable (required non-null when `status=success`)
+  4. `error_code` — string (`GEN_E_*`) — nullable (required non-null when `status=failure`)
+  5. `error_details` — object — nullable
+- Canonical ordering rules: response is canonicalized before protocol validation.
+- Hash participation rules: `request_id` binds response to request; successful `candidate_artifact` is normalized before downstream hashing.
+- Immutability guarantees: response is immutable once validated for the attempt.
+- Lifecycle constraints: one response per request; malformed shape is classified as `GEN_E_PROTOCOL`.
+
+### Normalized Candidate Artifact (emitted to harness verification path)
+- Name: `NormalizedCandidateArtifact`
+- Field list (ordered):
+  1. `normalized_bytes` — byte sequence — non-null
+- Canonical ordering rules: normalization enforces canonical artifact representation before verification.
+- Hash participation rules: normalized bytes define `candidate_artifact_hash` and freeze hash inputs.
+- Immutability guarantees: immutable after normalization for the attempt.
+- Lifecycle constraints: exists only on successful generation responses and is consumed by verification/freeze phases.

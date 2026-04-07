@@ -67,3 +67,57 @@ The Static Analysis Engine (SAE) is a deterministic trusted-core subsystem that 
 - MUST treat source artifact, contract, and budget as immutable inputs.
 - MUST NOT persist ASTs, metric caches, or cross-run analysis memory.
 - Failure payload content is immutable after emission for the attempt.
+
+## 10. Deterministic Data Models
+
+### Normalized Candidate Artifact Representation (consumed)
+- Name: `NormalizedCandidateArtifact`
+- Field list (ordered):
+  1. `normalized_bytes` — byte sequence — non-null
+- Canonical ordering rules: for multi-file artifacts, file paths are lexicographically ordered in canonical archive form; text content is UTF-8 with LF line endings.
+- Hash participation rules: normalized artifact bytes define `candidate_artifact_hash` and participate in freeze hashing.
+- Immutability guarantees: consumed as read-only verification input.
+- Lifecycle constraints: produced from successful generation response normalization; verified exactly once per attempt.
+
+### Local Budget (consumed)
+- Name: `LocalBudget`
+- Field list (ordered):
+  1. `artifact_id` — string — non-null
+  2. `max_lines_per_function` — integer — non-null
+  3. `max_nesting_depth` — integer — non-null
+  4. `max_cyclomatic_complexity` — integer — non-null
+  5. `max_fan_out` — integer — non-null
+  6. `max_file_size` — integer — non-null
+  7. `max_public_surface` — integer — non-null
+  8. `max_states` — integer — non-null
+  9. `max_transitions_per_state` — integer — non-null
+- Canonical ordering rules: keys follow budget schema order.
+- Hash participation rules: participates in `request_id` when included in generator request payload; does not redefine run identity.
+- Immutability guarantees: treated as immutable during verification.
+- Lifecycle constraints: fixed for all attempts within a run.
+
+### Contract Count View (consumed)
+- Name: `ContractDeclaredCounts`
+- Field list (ordered):
+  1. `declared_state_count` — integer (`>= 0`) — non-null
+  2. `declared_transition_count` — integer (`>= 0`) — non-null
+- Canonical ordering rules: keys follow contract schema order.
+- Hash participation rules: part of normalized contract bytes used for `contract_hash`.
+- Immutability guarantees: treated as immutable during verification.
+- Lifecycle constraints: fixed within the run; any contract change requires a new run.
+
+### Static Analysis Failure Payload (produced)
+- Name: `StaticAnalysisFailure`
+- Field list (ordered):
+  1. `error_code` — string (`SAE_E_*`) — non-null
+  2. `artifact_id` — string — non-null
+  3. `message` — string — non-null
+  4. `details` — object — non-null
+     - `metric` — string — non-null
+     - `value` — scalar/object/array — non-null
+     - `limit` — scalar/object/array — non-null
+     - `location` — string — nullable (explicit `null` allowed)
+- Canonical ordering rules: top-level keys are emitted in schema order; nested generic object keys are deterministic.
+- Hash participation rules: when serialized in ledger payloads, fields participate in canonical event bytes.
+- Immutability guarantees: immutable after emission for the attempt.
+- Lifecycle constraints: emitted only with `STATIC_ANALYSIS_FAILED` for the current attempt.
