@@ -98,3 +98,22 @@ The Normalization subsystem defines and applies canonical normalization rules so
 - Hash participation rules: defines bytes for `contract_hash`, `global_ceilings_hash`, `request_id`, and ledger `*_hash` fields where applicable.
 - Immutability guarantees: immutable normalized output for a given logical value.
 - Lifecycle constraints: reused as deterministic input identity across run lifecycle gates.
+
+## 11. Error codes and ownership
+
+### 1) Owned error code prefixes
+- Owned prefixes: none.
+- Authoritative documents define no standalone normalization-specific error-code namespace.
+- This subsystem MUST NOT emit codes outside authoritative definitions.
+
+### 2) Emitted error codes
+- Concrete normalization-specific error codes: none defined in authoritative documents.
+- Emission condition / terminality / surface location for normalization-specific codes: not specified because no normalization-specific codes are defined.
+
+### 3) Forbidden error behavior
+- MUST NOT reinterpret errors from other subsystems.
+- MUST NOT mint new error codes.
+- MUST NOT collapse distinct failures into one code unless specified.
+
+### 4) Cross-subsystem propagation rules
+- No cross-subsystem pass-through rule is specified for this subsystem.

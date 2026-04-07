@@ -125,3 +125,37 @@ The Harness is the deterministic orchestrator for the V1 pipeline. It enforces f
 - Hash participation rules: `*_hash` fields carry canonical digests of normalized inputs; event bytes are canonicalized for deterministic replay.
 - Immutability guarantees: emitted events are immutable and append-only.
 - Lifecycle constraints: event order follows run-model grammar, attempt monotonicity, and single terminal-event rule.
+
+## 11. Error codes and ownership
+
+### 1) Owned error code prefixes
+- Owned prefix: `HARNESS_E_*`.
+- This subsystem MUST NOT emit codes outside `HARNESS_E_*` for harness-owned errors.
+
+### 2) Emitted error codes
+- `HARNESS_E_INVALID_STATE`
+  - Emission condition: harness state-machine state is invalid for the current transition.
+  - Terminal vs non-terminal: not explicitly specified in authoritative docs.
+  - Surface location: harness error object `error_code` and corresponding ledger failure payload when emitted.
+- `HARNESS_E_UNEXPECTED_INPUT`
+  - Emission condition: input is unexpected for current harness gate/state processing.
+  - Terminal vs non-terminal: not explicitly specified in authoritative docs.
+  - Surface location: harness error object `error_code` and corresponding ledger failure payload when emitted.
+- `HARNESS_E_MAX_ATTEMPTS_EXCEEDED`
+  - Emission condition: bounded attempt limit is exceeded.
+  - Terminal vs non-terminal: terminal at run level (`RUN_ABORTED` after attempt exhaustion).
+  - Surface location: harness error object `error_code` and corresponding ledger failure payload when emitted.
+- `HARNESS_E_GATE_FAILURE`
+  - Emission condition: subsystem gate failure is wrapped by harness.
+  - Terminal vs non-terminal: not explicitly specified in authoritative docs.
+  - Surface location: wrapper object with `error_code: HARNESS_E_GATE_FAILURE` and preserved original code at `cause.subsystem_error_code`; recorded in ledger failure payload.
+
+### 3) Forbidden error behavior
+- MUST NOT reinterpret errors from other subsystems.
+- MUST NOT mint new error codes.
+- MUST NOT collapse distinct failures into one code unless specified.
+
+### 4) Cross-subsystem propagation rules
+- Pass-through only; no translation of originating subsystem code.
+- Wrapped failures preserve original subsystem code at `cause.subsystem_error_code`.
+- Gate failures remain recorded with subsystem namespaces in ledger event payloads.

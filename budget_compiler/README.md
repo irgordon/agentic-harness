@@ -136,3 +136,47 @@ The Budget Compiler is a deterministic trusted-core subsystem that validates a c
 - Hash participation rules: when included in `GeneratorRequest_without_id`, normalized `LocalBudget` bytes participate in `request_id` computation.
 - Immutability guarantees: immutable after deterministic emission within a run.
 - Lifecycle constraints: emitted only after `BUDGET_DERIVATION`; consumed by generation and verification phases in the same run.
+
+## 11. Error codes and ownership
+
+### 1) Owned error code prefixes
+- Owned prefix: `BUDGET_E_*`.
+- This subsystem MUST NOT emit codes outside `BUDGET_E_*`.
+
+### 2) Emitted error codes
+- `BUDGET_E_INVALID_CONTRACT_SCHEMA`
+  - Emission condition: contract schema is invalid.
+  - Terminal vs non-terminal: terminal at run level when `BUDGET_DERIVATION` fails and `RUN_ABORTED` is emitted.
+  - Surface location: budget-derivation failure surfaced by harness in run-abort failure path (`BUDGET_E_*`) and recorded in ledger failure payload.
+- `BUDGET_E_INVALID_GLOBAL_CEILINGS_SCHEMA`
+  - Emission condition: global ceilings schema is invalid.
+  - Terminal vs non-terminal: terminal at run level when `BUDGET_DERIVATION` fails and `RUN_ABORTED` is emitted.
+  - Surface location: budget-derivation failure surfaced by harness in run-abort failure path (`BUDGET_E_*`) and recorded in ledger failure payload.
+- `BUDGET_E_CONTRACT_FIELD_CONFLICT`
+  - Emission condition: contract cross-field validity rules fail.
+  - Terminal vs non-terminal: terminal at run level when `BUDGET_DERIVATION` fails and `RUN_ABORTED` is emitted.
+  - Surface location: budget-derivation failure surfaced by harness in run-abort failure path (`BUDGET_E_*`) and recorded in ledger failure payload.
+- `BUDGET_E_CONTRACT_INCOMPATIBLE_WITH_GLOBAL_LIMITS`
+  - Emission condition: contract is incompatible with global limits.
+  - Terminal vs non-terminal: terminal at run level when `BUDGET_DERIVATION` fails and `RUN_ABORTED` is emitted.
+  - Surface location: budget-derivation failure surfaced by harness in run-abort failure path (`BUDGET_E_*`) and recorded in ledger failure payload.
+- `BUDGET_E_INTERNAL_RULE_TABLE_INVALID`
+  - Emission condition: internal rule table is invalid.
+  - Terminal vs non-terminal: terminal at run level when `BUDGET_DERIVATION` fails and `RUN_ABORTED` is emitted.
+  - Surface location: budget-derivation failure surfaced by harness in run-abort failure path (`BUDGET_E_*`) and recorded in ledger failure payload.
+- `BUDGET_E_FORBIDDEN_OVERRIDE`
+  - Emission condition: exemption override violates allowed override scope.
+  - Terminal vs non-terminal: terminal at run level when `BUDGET_DERIVATION` fails and `RUN_ABORTED` is emitted.
+  - Surface location: budget-derivation failure surfaced by harness in run-abort failure path (`BUDGET_E_*`) and recorded in ledger failure payload.
+- `BUDGET_E_OVERRIDE_EXCEEDS_CEILING`
+  - Emission condition: exemption override exceeds global ceiling.
+  - Terminal vs non-terminal: terminal at run level when `BUDGET_DERIVATION` fails and `RUN_ABORTED` is emitted.
+  - Surface location: budget-derivation failure surfaced by harness in run-abort failure path (`BUDGET_E_*`) and recorded in ledger failure payload.
+
+### 3) Forbidden error behavior
+- MUST NOT reinterpret errors from other subsystems.
+- MUST NOT mint new error codes.
+- MUST NOT collapse distinct failures into one code unless specified.
+
+### 4) Cross-subsystem propagation rules
+- No cross-subsystem pass-through rule is specified for this subsystem.

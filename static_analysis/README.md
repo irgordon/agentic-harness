@@ -121,3 +121,59 @@ The Static Analysis Engine (SAE) is a deterministic trusted-core subsystem that 
 - Hash participation rules: when serialized in ledger payloads, fields participate in canonical event bytes.
 - Immutability guarantees: immutable after emission for the attempt.
 - Lifecycle constraints: emitted only with `STATIC_ANALYSIS_FAILED` for the current attempt.
+
+## 11. Error codes and ownership
+
+### 1) Owned error code prefixes
+- Owned prefix: `SAE_E_*`.
+- This subsystem MUST NOT emit codes outside `SAE_E_*`.
+
+### 2) Emitted error codes
+- `SAE_E_PARSE_ERROR`
+  - Emission condition: artifact cannot be parsed under SAE metric rules.
+  - Terminal vs non-terminal: non-terminal for the current attempt (`STATIC_ANALYSIS_FAILED` → `ATTEMPT_FAILED`); terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `error_code` in structured static-analysis failure payload (subsystem output and ledger `STATIC_ANALYSIS_FAILED` payload).
+- `SAE_E_LINES_PER_FUNCTION`
+  - Emission condition: lines-per-function metric exceeds local budget.
+  - Terminal vs non-terminal: non-terminal for the current attempt; terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `error_code` in structured static-analysis failure payload (subsystem output and ledger `STATIC_ANALYSIS_FAILED` payload).
+- `SAE_E_NESTING_DEPTH`
+  - Emission condition: nesting-depth metric exceeds local budget.
+  - Terminal vs non-terminal: non-terminal for the current attempt; terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `error_code` in structured static-analysis failure payload (subsystem output and ledger `STATIC_ANALYSIS_FAILED` payload).
+- `SAE_E_CYCLOMATIC_COMPLEXITY`
+  - Emission condition: cyclomatic-complexity metric exceeds local budget.
+  - Terminal vs non-terminal: non-terminal for the current attempt; terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `error_code` in structured static-analysis failure payload (subsystem output and ledger `STATIC_ANALYSIS_FAILED` payload).
+- `SAE_E_FAN_OUT`
+  - Emission condition: fan-out metric exceeds local budget.
+  - Terminal vs non-terminal: non-terminal for the current attempt; terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `error_code` in structured static-analysis failure payload (subsystem output and ledger `STATIC_ANALYSIS_FAILED` payload).
+- `SAE_E_FILE_SIZE`
+  - Emission condition: file-size metric exceeds local budget.
+  - Terminal vs non-terminal: non-terminal for the current attempt; terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `error_code` in structured static-analysis failure payload (subsystem output and ledger `STATIC_ANALYSIS_FAILED` payload).
+- `SAE_E_PUBLIC_SURFACE`
+  - Emission condition: public-surface metric exceeds local budget.
+  - Terminal vs non-terminal: non-terminal for the current attempt; terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `error_code` in structured static-analysis failure payload (subsystem output and ledger `STATIC_ANALYSIS_FAILED` payload).
+- `SAE_E_STATE_COUNT`
+  - Emission condition: measured state count does not match `declared_state_count`.
+  - Terminal vs non-terminal: non-terminal for the current attempt; terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `error_code` in structured static-analysis failure payload (subsystem output and ledger `STATIC_ANALYSIS_FAILED` payload).
+- `SAE_E_TRANSITION_COUNT`
+  - Emission condition: measured transition count violates declaration equality and/or transition bound rule.
+  - Terminal vs non-terminal: non-terminal for the current attempt; terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `error_code` in structured static-analysis failure payload (subsystem output and ledger `STATIC_ANALYSIS_FAILED` payload).
+- `SAE_E_INTERNAL_ERROR`
+  - Emission condition: internal SAE failure during deterministic analysis.
+  - Terminal vs non-terminal: non-terminal for the current attempt; terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `error_code` in structured static-analysis failure payload (subsystem output and ledger `STATIC_ANALYSIS_FAILED` payload).
+
+### 3) Forbidden error behavior
+- MUST NOT reinterpret errors from other subsystems.
+- MUST NOT mint new error codes.
+- MUST NOT collapse distinct failures into one code unless specified.
+
+### 4) Cross-subsystem propagation rules
+- No cross-subsystem pass-through rule is specified for this subsystem.

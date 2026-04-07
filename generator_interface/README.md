@@ -116,3 +116,39 @@ The Generator Interface defines the boundary contract between the deterministic 
 - Hash participation rules: normalized bytes define `candidate_artifact_hash` and freeze hash inputs.
 - Immutability guarantees: immutable after normalization for the attempt.
 - Lifecycle constraints: exists only on successful generation responses and is consumed by verification/freeze phases.
+
+## 11. Error codes and ownership
+
+### 1) Owned error code prefixes
+- Owned prefix: `GEN_E_*`.
+- This subsystem MUST NOT emit codes outside `GEN_E_*`.
+
+### 2) Emitted error codes
+- `GEN_E_PROTOCOL`
+  - Emission condition: response validation violation (request mismatch, invalid status, or null/non-null constraint violation) and malformed response handling.
+  - Terminal vs non-terminal: non-terminal for the current attempt (`GENERATION_FAILED` + `ATTEMPT_FAILED`); terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `GeneratorResponse.error_code` when `status=failure`; then surfaced through harness generation-failure events/payload.
+- `GEN_E_TIMEOUT`
+  - Emission condition: generator timeout at configured `generator_timeout_ms`.
+  - Terminal vs non-terminal: non-terminal for the current attempt; terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `GeneratorResponse.error_code` when timeout is classified as failure; then surfaced through harness generation-failure events/payload.
+- `GEN_E_INTERNAL`
+  - Emission condition: generator internal failure.
+  - Terminal vs non-terminal: non-terminal for the current attempt; terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `GeneratorResponse.error_code` when `status=failure`; then surfaced through harness generation-failure events/payload.
+- `GEN_E_UNSUPPORTED_CONTRACT`
+  - Emission condition: generator cannot handle the provided contract.
+  - Terminal vs non-terminal: non-terminal for the current attempt; terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `GeneratorResponse.error_code` when `status=failure`; then surfaced through harness generation-failure events/payload.
+- `GEN_E_RESOURCE_LIMIT`
+  - Emission condition: generator resource-limit failure.
+  - Terminal vs non-terminal: non-terminal for the current attempt; terminal run abort occurs only when attempt limit is exhausted.
+  - Surface location: `GeneratorResponse.error_code` when `status=failure`; then surfaced through harness generation-failure events/payload.
+
+### 3) Forbidden error behavior
+- MUST NOT reinterpret errors from other subsystems.
+- MUST NOT mint new error codes.
+- MUST NOT collapse distinct failures into one code unless specified.
+
+### 4) Cross-subsystem propagation rules
+- No cross-subsystem pass-through rule is specified for this subsystem.
