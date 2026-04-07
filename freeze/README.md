@@ -83,3 +83,23 @@ The Freeze subsystem is a deterministic trusted-core subsystem that finalizes a 
 - Hash participation rules: participates in canonical ledger event serialization for failure traceability.
 - Immutability guarantees: immutable once emitted.
 - Lifecycle constraints: emitted only on freeze failure and followed by terminal `RUN_ABORTED`.
+
+## 11. Error codes and ownership
+
+### 1) Owned error code prefixes
+- Owned prefix: `FREEZE_E_*`.
+- This subsystem MUST NOT emit codes outside `FREEZE_E_*`.
+
+### 2) Emitted error codes
+- Concrete `FREEZE_E_*` codes are not enumerated in authoritative documents.
+- Authoritative emission rule: freeze failure uses `FREEZE_E_*` in the harness freeze failure path (`RUN_ABORTED` with `FREEZE_E_*`).
+- Terminal vs non-terminal: terminal at run level on freeze failure (`RUN_ABORTED`).
+- Surface location: run-abort freeze failure path carrying `FREEZE_E_*`; freeze failure is also represented by `FREEZE_FAILED` before `RUN_ABORTED` in run-model flow.
+
+### 3) Forbidden error behavior
+- MUST NOT reinterpret errors from other subsystems.
+- MUST NOT mint new error codes.
+- MUST NOT collapse distinct failures into one code unless specified.
+
+### 4) Cross-subsystem propagation rules
+- No cross-subsystem pass-through rule is specified for this subsystem.

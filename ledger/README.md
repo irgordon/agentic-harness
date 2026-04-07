@@ -100,3 +100,32 @@ The Ledger is the authoritative append-only, deterministic event log for a harne
 - Hash participation rules: payload bytes participate in canonical event serialization.
 - Immutability guarantees: immutable after append.
 - Lifecycle constraints: appears only on `STATIC_ANALYSIS_FAILED` attempt events.
+
+## 11. Error codes and ownership
+
+### 1) Owned error code prefixes
+- Owned prefix: `LEDGER_E_*`.
+- This subsystem MUST NOT emit codes outside `LEDGER_E_*` for ledger-owned failures.
+
+### 2) Emitted error codes
+- `LEDGER_E_SERIALIZATION`
+  - Emission condition: canonical event serialization fails.
+  - Terminal vs non-terminal: not explicitly specified in authoritative docs.
+  - Surface location: ledger write/append failure result from the ledger subsystem.
+- `LEDGER_E_APPEND_FAILURE`
+  - Emission condition: append operation fails.
+  - Terminal vs non-terminal: not explicitly specified in authoritative docs.
+  - Surface location: ledger write/append failure result from the ledger subsystem.
+- `LEDGER_E_INVALID_EVENT_SCHEMA`
+  - Emission condition: event does not conform to ledger event schema.
+  - Terminal vs non-terminal: not explicitly specified in authoritative docs.
+  - Surface location: ledger write/append failure result from the ledger subsystem.
+
+### 3) Forbidden error behavior
+- MUST NOT reinterpret errors from other subsystems.
+- MUST NOT mint new error codes.
+- MUST NOT collapse distinct failures into one code unless specified.
+
+### 4) Cross-subsystem propagation rules
+- Pass-through only; no translation of non-ledger subsystem errors.
+- Original subsystem codes are preserved in event payloads when gate failures are recorded.
