@@ -83,14 +83,14 @@ The Static Analysis Engine (SAE) is a deterministic trusted-core subsystem that 
 - Name: `LocalBudget`
 - Field list (ordered):
   1. `artifact_id` — string — non-null
-  2. `max_lines_per_function` — integer — non-null
-  3. `max_nesting_depth` — integer — non-null
-  4. `max_cyclomatic_complexity` — integer — non-null
-  5. `max_fan_out` — integer — non-null
-  6. `max_file_size` — integer — non-null
-  7. `max_public_surface` — integer — non-null
-  8. `max_states` — integer — non-null
-  9. `max_transitions_per_state` — integer — non-null
+  2. `max_lines_per_function` — integer (`>= 0`) — non-null
+  3. `max_nesting_depth` — integer (`>= 0`) — non-null
+  4. `max_cyclomatic_complexity` — integer (`>= 0`) — non-null
+  5. `max_fan_out` — integer (`>= 0`) — non-null
+  6. `max_file_size` — integer (`>= 0`) — non-null
+  7. `max_public_surface` — integer (`>= 0`) — non-null
+  8. `max_states` — integer (`>= 0`) — non-null
+  9. `max_transitions_per_state` — integer (`>= 0`) — non-null
 - Canonical ordering rules: keys follow budget schema order.
 - Hash participation rules: participates in `request_id` when included in generator request payload; does not redefine run identity.
 - Immutability guarantees: treated as immutable during verification.
