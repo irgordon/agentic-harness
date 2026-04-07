@@ -35,6 +35,22 @@ static uint32_t ledger_sha256_small_sigma1(uint32_t x) {
   return ledger_sha256_rotr(x, 17U) ^ ledger_sha256_rotr(x, 19U) ^ (x >> 10U);
 }
 
+static char ledger_sha256_hex_digit(uint8_t nibble) {
+  static const char digits[] = "0123456789abcdef";
+  return digits[nibble & 0x0FU];
+}
+
+static void ledger_sha256_digest_to_hex(const ledger_sha256_digest_t *digest,
+                                        char out_hex[LEDGER_SHA256_HEX_LENGTH]) {
+  ledger_u64_t i;
+
+  for (i = 0U; i < LEDGER_SHA256_DIGEST_SIZE; ++i) {
+    const uint8_t byte = digest->bytes[i];
+    out_hex[i * 2U] = ledger_sha256_hex_digit((uint8_t)(byte >> 4U));
+    out_hex[(i * 2U) + 1U] = ledger_sha256_hex_digit(byte);
+  }
+}
+
 static void ledger_sha256_process_block(uint32_t state[8],
                                         const uint8_t block[64]) {
   uint32_t schedule[LEDGER_SHA256_MESSAGE_WORDS];
@@ -159,4 +175,54 @@ void ledger_sha256_digest(const uint8_t *input_bytes,
         (uint8_t)(state[output_index] >> 8U);
     out_digest->bytes[(output_index * 4U) + 3U] = (uint8_t)state[output_index];
   }
+}
+
+void ledger_event_populate_envelope_hashes(
+    ledger_event_t *event,
+    const ledger_event_hash_inputs_t *hash_inputs,
+    ledger_event_hash_storage_t *hash_storage) {
+  ledger_sha256_digest_t contract_digest;
+  ledger_sha256_digest_t global_ceilings_digest;
+  ledger_sha256_digest_t exemption_manifest_digest;
+  ledger_sha256_digest_t toolchain_digest;
+
+  /* docs/LEDGER.md section 6.1: hash exact normalized JSON UTF-8 bytes. */
+  ledger_sha256_digest(hash_inputs->contract.normalized_bytes.bytes,
+                       hash_inputs->contract.normalized_bytes.length,
+                       &contract_digest);
+  ledger_sha256_digest(hash_inputs->global_ceilings.normalized_bytes.bytes,
+                       hash_inputs->global_ceilings.normalized_bytes.length,
+                       &global_ceilings_digest);
+  ledger_sha256_digest(hash_inputs->exemption_manifest.normalized_bytes.bytes,
+                       hash_inputs->exemption_manifest.normalized_bytes.length,
+                       &exemption_manifest_digest);
+  ledger_sha256_digest(hash_inputs->toolchain.normalized_bytes.bytes,
+                       hash_inputs->toolchain.normalized_bytes.length,
+                       &toolchain_digest);
+
+  /* docs/LEDGER.md section 6.1: lowercase hex output, exactly 64 chars. */
+  ledger_sha256_digest_to_hex(&contract_digest, hash_storage->contract_hash);
+  ledger_sha256_digest_to_hex(&global_ceilings_digest,
+                              hash_storage->global_ceilings_hash);
+  ledger_sha256_digest_to_hex(&exemption_manifest_digest,
+                              hash_storage->exemption_manifest_hash);
+  ledger_sha256_digest_to_hex(&toolchain_digest, hash_storage->toolchain_hash);
+
+  /* docs/LEDGER.md section 6: hash fields are explicit envelope members. */
+  event->contract_hash.has_value = true;
+  event->contract_hash.value.bytes = hash_storage->contract_hash;
+  event->contract_hash.value.length = LEDGER_SHA256_HEX_LENGTH;
+
+  event->global_ceilings_hash.has_value = true;
+  event->global_ceilings_hash.value.bytes = hash_storage->global_ceilings_hash;
+  event->global_ceilings_hash.value.length = LEDGER_SHA256_HEX_LENGTH;
+
+  event->exemption_manifest_hash.has_value = true;
+  event->exemption_manifest_hash.value.bytes =
+      hash_storage->exemption_manifest_hash;
+  event->exemption_manifest_hash.value.length = LEDGER_SHA256_HEX_LENGTH;
+
+  event->toolchain_hash.has_value = true;
+  event->toolchain_hash.value.bytes = hash_storage->toolchain_hash;
+  event->toolchain_hash.value.length = LEDGER_SHA256_HEX_LENGTH;
 }

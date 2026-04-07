@@ -92,11 +92,36 @@ typedef struct ledger_static_analysis_failure_payload_t {
   ledger_static_analysis_failure_details_t details;
 } ledger_static_analysis_failure_payload_t;
 
-enum { LEDGER_SHA256_DIGEST_SIZE = 32U };
+enum {
+  LEDGER_SHA256_DIGEST_SIZE = 32U,
+  LEDGER_SHA256_HEX_LENGTH = 64U
+};
 
 typedef struct ledger_sha256_digest_t {
   uint8_t bytes[LEDGER_SHA256_DIGEST_SIZE];
 } ledger_sha256_digest_t;
+
+/*
+ * Normalized JSON hash inputs used to populate the ledger event envelope
+ * `*_hash` fields in canonical schema order.
+ */
+typedef struct ledger_event_hash_inputs_t {
+  ledger_json_t contract;
+  ledger_json_t global_ceilings;
+  ledger_json_t exemption_manifest;
+  ledger_json_t toolchain;
+} ledger_event_hash_inputs_t;
+
+/*
+ * Caller-owned storage for 64-char lowercase hex SHA-256 digest strings.
+ * The ledger event envelope points into this storage after population.
+ */
+typedef struct ledger_event_hash_storage_t {
+  char contract_hash[LEDGER_SHA256_HEX_LENGTH];
+  char global_ceilings_hash[LEDGER_SHA256_HEX_LENGTH];
+  char exemption_manifest_hash[LEDGER_SHA256_HEX_LENGTH];
+  char toolchain_hash[LEDGER_SHA256_HEX_LENGTH];
+} ledger_event_hash_storage_t;
 
 /*
  * docs/LEDGER.md section 6.1:
@@ -108,5 +133,17 @@ typedef struct ledger_sha256_digest_t {
 void ledger_sha256_digest(const uint8_t *input_bytes,
                           ledger_u64_t input_length,
                           ledger_sha256_digest_t *out_digest);
+
+/*
+ * docs/LEDGER.md section 6.1:
+ * * Hash input domain is the exact normalized JSON UTF-8 byte sequence.
+ * * Output encoding is lowercase hex with exactly 64 characters.
+ * * Envelope hash fields are set explicitly and treated as immutable after
+ *   this construction step.
+ */
+void ledger_event_populate_envelope_hashes(
+    ledger_event_t *event,
+    const ledger_event_hash_inputs_t *hash_inputs,
+    ledger_event_hash_storage_t *hash_storage);
 
 #endif /* CORE_LEDGER_LEDGER_H */
