@@ -61,6 +61,7 @@ static void ledger_json_write_bytes(ledger_json_writer_t *writer,
                                     ledger_u64_t length) {
   ledger_u64_t i;
   if (bytes == NULL) {
+    /* Preserve required-length accounting when writing into a null sink. */
     writer->length += length;
     return;
   }
