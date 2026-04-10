@@ -212,4 +212,11 @@ ledger_error_code_t ledger_append_bytes(int fd,
                                         const uint8_t *bytes,
                                         ledger_u64_t length);
 
+/*
+ * Mechanical deterministic emission only:
+ * event -> canonical envelope -> canonical JSON bytes -> append-only write.
+ * This function does not interpret event semantics, grammar, or policy.
+ */
+ledger_error_code_t ledger_emit_event(int fd, const ledger_event_t *event);
+
 #endif /* CORE_LEDGER_LEDGER_H */
