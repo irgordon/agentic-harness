@@ -1,5 +1,8 @@
 #include "ledger.h"
+#include <errno.h>
 #include <stddef.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 enum {
   LEDGER_SHA256_BLOCK_SIZE = 64U,
@@ -454,4 +457,44 @@ void ledger_event_serialize_json(const ledger_event_t *envelope,
   ledger_event_serialize_json_into(&writer, envelope);
 
   *in_out_length = writer.length;
+}
+
+ledger_error_code_t ledger_append_bytes(int fd,
+                                        const uint8_t *bytes,
+                                        ledger_u64_t length) {
+  ledger_u64_t written = 0U;
+
+  /*
+   * docs/LEDGER.md section 9:
+   * return only ledger-defined error identifiers.
+   */
+  if (fd < 0 || bytes == NULL || length == 0U) {
+    return LEDGER_E_SERIALIZATION;
+  }
+
+  /*
+   * docs/LEDGER.md section 2 + 8.2 + 10:
+   * append-only + serial single-writer model.
+   * Seek to EOF before writing so this call only appends bytes.
+   */
+  if (lseek(fd, 0, SEEK_END) == (off_t)-1) {
+    return LEDGER_E_APPEND_FAILURE;
+  }
+
+  while (written < length) {
+    const ssize_t rc = write(fd, bytes + written, (size_t)(length - written));
+
+    if (rc > 0) {
+      written += (ledger_u64_t)rc;
+      continue;
+    }
+
+    if (rc == -1 && errno == EINTR) {
+      continue;
+    }
+
+    return LEDGER_E_APPEND_FAILURE;
+  }
+
+  return (ledger_error_code_t)0;
 }
