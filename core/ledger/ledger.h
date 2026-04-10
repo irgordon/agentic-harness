@@ -197,4 +197,19 @@ void ledger_event_serialize_json(const ledger_event_t *envelope,
                                  uint8_t *out_bytes,
                                  ledger_u64_t *in_out_length);
 
+/*
+ * docs/LEDGER.md section 2 + section 8.2 + section 10:
+ * * Append-only writes
+ * * Events appended in exact emitted order (no reordering)
+ * * Single-writer serial emission, no parallel writes, no async buffering
+ *
+ * Returns:
+ * * 0 on success
+ * * LEDGER_E_SERIALIZATION for zero/invalid input length or invalid input
+ * * LEDGER_E_APPEND_FAILURE on append syscall failure
+ */
+ledger_error_code_t ledger_append_bytes(int fd,
+                                        const uint8_t *bytes,
+                                        ledger_u64_t length);
+
 #endif /* CORE_LEDGER_LEDGER_H */
