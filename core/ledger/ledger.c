@@ -110,9 +110,9 @@ static void ledger_json_write_escaped_string(ledger_json_writer_t *writer,
         if (byte < 0x20U) {
           ledger_json_write_cstr(writer, "\\u00");
           ledger_json_write_byte(writer,
-                                 (uint8_t)ledger_sha256_hex_digit((uint8_t)(byte >> 4U)));
+                                 (uint8_t)ledger_sha256_hex_digit(byte >> 4U));
           ledger_json_write_byte(writer,
-                                 (uint8_t)ledger_sha256_hex_digit((uint8_t)(byte & 0x0FU)));
+                                 (uint8_t)ledger_sha256_hex_digit(byte & 0x0FU));
         } else {
           ledger_json_write_byte(writer, byte);
         }
