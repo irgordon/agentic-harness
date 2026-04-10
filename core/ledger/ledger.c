@@ -228,3 +228,22 @@ void ledger_event_populate_envelope_hashes(
   event->toolchain_hash.value.bytes = hash_storage->toolchain_hash;
   event->toolchain_hash.value.length = LEDGER_SHA256_HEX_LENGTH;
 }
+
+void ledger_event_construct_envelope(
+    ledger_event_t *out_event,
+    const ledger_event_envelope_inputs_t *inputs) {
+  /*
+   * docs/LEDGER.md section 6:
+   * * Fields MUST appear in the exact order listed above.
+   * * Nulls MUST be explicit.
+   */
+  out_event->event_type = inputs->event_type;
+  out_event->run_id = inputs->run_id;
+  out_event->attempt = inputs->attempt;
+  out_event->artifact_id = inputs->artifact_id;
+  out_event->contract_hash = inputs->contract_hash;
+  out_event->global_ceilings_hash = inputs->global_ceilings_hash;
+  out_event->exemption_manifest_hash = inputs->exemption_manifest_hash;
+  out_event->toolchain_hash = inputs->toolchain_hash;
+  out_event->payload = inputs->payload;
+}

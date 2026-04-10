@@ -20,6 +20,10 @@ typedef struct ledger_json_t {
   ledger_bytes_t normalized_bytes;
 } ledger_json_t;
 
+typedef struct ledger_payload_ref_t {
+  const void *opaque_payload;
+} ledger_payload_ref_t;
+
 typedef struct ledger_optional_u64_t {
   bool has_value;
   ledger_u64_t value;
@@ -49,6 +53,12 @@ typedef enum ledger_error_code_t {
  * Ledger event envelope (consumed and persisted)
  * Field order is canonical and MUST match docs/LEDGER.md section 6.
  * Envelope values are immutable after append.
+ *
+ * docs/LEDGER.md section 6 rules:
+ * * Fields MUST appear in the exact order listed above.
+ * * Nulls MUST be explicit.
+ * * Hashes MUST be canonical digests of normalized inputs.
+ * * No timestamps, UUIDs, or nondeterministic metadata.
  */
 typedef struct ledger_event_t {
   ledger_string_t event_type;
@@ -59,8 +69,24 @@ typedef struct ledger_event_t {
   ledger_optional_string_t global_ceilings_hash;
   ledger_optional_string_t exemption_manifest_hash;
   ledger_optional_string_t toolchain_hash;
-  ledger_json_t payload;
+  ledger_payload_ref_t payload;
 } ledger_event_t;
+
+/*
+ * Deterministic construction inputs for the event envelope.
+ * Nullable members use explicit has_value flags; no defaulting is permitted.
+ */
+typedef struct ledger_event_envelope_inputs_t {
+  ledger_string_t event_type;
+  ledger_string_t run_id;
+  ledger_optional_u64_t attempt;
+  ledger_optional_string_t artifact_id;
+  ledger_optional_string_t contract_hash;
+  ledger_optional_string_t global_ceilings_hash;
+  ledger_optional_string_t exemption_manifest_hash;
+  ledger_optional_string_t toolchain_hash;
+  ledger_payload_ref_t payload;
+} ledger_event_envelope_inputs_t;
 
 /*
  * ExemptionApplied payload (payload object for EXEMPTION_APPLIED).
@@ -146,5 +172,13 @@ void ledger_event_populate_envelope_hashes(
     ledger_event_t *event,
     const ledger_event_hash_inputs_t *hash_inputs,
     ledger_event_hash_storage_t *hash_storage);
+
+/*
+ * Deterministically constructs the canonical event envelope from explicit inputs.
+ * By convention, the resulting envelope is immutable after construction.
+ */
+void ledger_event_construct_envelope(
+    ledger_event_t *out_event,
+    const ledger_event_envelope_inputs_t *inputs);
 
 #endif /* CORE_LEDGER_LEDGER_H */
