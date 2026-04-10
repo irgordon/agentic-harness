@@ -1,4 +1,5 @@
 #include "ledger.h"
+#include <stddef.h>
 
 enum {
   LEDGER_SHA256_BLOCK_SIZE = 64U,
@@ -48,7 +49,7 @@ static char ledger_sha256_hex_digit(uint8_t nibble) {
 }
 
 static void ledger_json_write_byte(ledger_json_writer_t *writer, uint8_t value) {
-  if (writer->length < writer->capacity && writer->bytes != 0) {
+  if (writer->length < writer->capacity && writer->bytes != NULL) {
     writer->bytes[writer->length] = value;
   }
   writer->length += 1U;
@@ -423,7 +424,7 @@ void ledger_event_serialize_json(const ledger_event_t *envelope,
                                  ledger_u64_t *in_out_length) {
   ledger_json_writer_t writer;
 
-  if (envelope == 0 || in_out_length == 0) {
+  if (envelope == NULL || in_out_length == NULL) {
     return;
   }
 
