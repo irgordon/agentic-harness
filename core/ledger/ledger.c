@@ -10,6 +10,7 @@ enum {
 typedef struct ledger_json_writer_t {
   uint8_t *bytes;
   ledger_u64_t capacity;
+  /* Tracks required output size even when buffer capacity is insufficient. */
   ledger_u64_t length;
 } ledger_json_writer_t;
 
@@ -60,6 +61,7 @@ static void ledger_json_write_bytes(ledger_json_writer_t *writer,
                                     ledger_u64_t length) {
   ledger_u64_t i;
   if (bytes == NULL) {
+    writer->length += length;
     return;
   }
   for (i = 0U; i < length; ++i) {
@@ -208,6 +210,10 @@ static void ledger_event_serialize_json_into(ledger_json_writer_t *writer,
   ledger_json_write_byte(writer, (uint8_t)',');
 
   ledger_json_write_key(writer, "payload");
+  /*
+   * Payload is opaque to ledger serialization and is emitted verbatim.
+   * Callers provide pre-serialized JSON bytes for the payload value.
+   */
   ledger_json_write_bytes(writer, envelope->payload.opaque_payload,
                           envelope->payload.length);
 
