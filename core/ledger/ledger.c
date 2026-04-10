@@ -1,9 +1,18 @@
 #include "ledger.h"
+#include <stddef.h>
 
 enum {
   LEDGER_SHA256_BLOCK_SIZE = 64U,
-  LEDGER_SHA256_MESSAGE_WORDS = 64U
+  LEDGER_SHA256_MESSAGE_WORDS = 64U,
+  LEDGER_U64_MAX_DECIMAL_DIGITS = 20U
 };
+
+typedef struct ledger_json_writer_t {
+  uint8_t *bytes;
+  ledger_u64_t capacity;
+  /* Tracks required output size even when buffer capacity is insufficient. */
+  ledger_u64_t length;
+} ledger_json_writer_t;
 
 static uint32_t ledger_sha256_rotr(uint32_t value, uint32_t shift) {
   return (value >> shift) | (value << (32U - shift));
@@ -38,6 +47,187 @@ static uint32_t ledger_sha256_small_sigma1(uint32_t x) {
 static char ledger_sha256_hex_digit(uint8_t nibble) {
   static const char digits[] = "0123456789abcdef";
   return digits[nibble & 0x0FU];
+}
+
+static void ledger_json_write_byte(ledger_json_writer_t *writer, uint8_t value) {
+  if (writer == NULL) {
+    return;
+  }
+  if (writer->length < writer->capacity && writer->bytes != NULL) {
+    writer->bytes[writer->length] = value;
+  }
+  writer->length += 1U;
+}
+
+static void ledger_json_write_bytes(ledger_json_writer_t *writer,
+                                    const uint8_t *bytes,
+                                    ledger_u64_t length) {
+  ledger_u64_t i;
+  if (writer == NULL) {
+    return;
+  }
+  if (bytes == NULL) {
+    /* Preserve required-length accounting when writing into a null sink. */
+    writer->length += length;
+    return;
+  }
+  for (i = 0U; i < length; ++i) {
+    ledger_json_write_byte(writer, bytes[i]);
+  }
+}
+
+static void ledger_json_write_cstr(ledger_json_writer_t *writer,
+                                   const char *cstr) {
+  const char *it = cstr;
+  if (writer == NULL || cstr == NULL) {
+    return;
+  }
+  while (*it != '\0') {
+    ledger_json_write_byte(writer, (uint8_t)*it);
+    ++it;
+  }
+}
+
+static void ledger_json_write_escaped_string(ledger_json_writer_t *writer,
+                                             ledger_string_t value) {
+  ledger_u64_t i;
+  ledger_json_write_byte(writer, (uint8_t)'"');
+  for (i = 0U; i < value.length; ++i) {
+    const uint8_t byte = (uint8_t)value.bytes[i];
+    switch (byte) {
+      case '"':
+        ledger_json_write_cstr(writer, "\\\"");
+        break;
+      case '\\':
+        ledger_json_write_cstr(writer, "\\\\");
+        break;
+      case '\b':
+        ledger_json_write_cstr(writer, "\\b");
+        break;
+      case '\f':
+        ledger_json_write_cstr(writer, "\\f");
+        break;
+      case '\n':
+        ledger_json_write_cstr(writer, "\\n");
+        break;
+      case '\r':
+        ledger_json_write_cstr(writer, "\\r");
+        break;
+      case '\t':
+        ledger_json_write_cstr(writer, "\\t");
+        break;
+      default:
+        if (byte < 0x20U) {
+          ledger_json_write_cstr(writer, "\\u00");
+          ledger_json_write_byte(writer,
+                                 (uint8_t)ledger_sha256_hex_digit(byte >> 4U));
+          ledger_json_write_byte(writer,
+                                 (uint8_t)ledger_sha256_hex_digit(byte & 0x0FU));
+        } else {
+          ledger_json_write_byte(writer, byte);
+        }
+        break;
+    }
+  }
+  ledger_json_write_byte(writer, (uint8_t)'"');
+}
+
+static void ledger_json_write_u64(ledger_json_writer_t *writer, ledger_u64_t value) {
+  uint8_t digits[LEDGER_U64_MAX_DECIMAL_DIGITS];
+  ledger_u64_t digit_count = 0U;
+  ledger_u64_t i;
+
+  do {
+    digits[digit_count] = (uint8_t)('0' + (value % 10U));
+    value /= 10U;
+    digit_count += 1U;
+  } while (value != 0U);
+
+  for (i = digit_count; i > 0U; --i) {
+    ledger_json_write_byte(writer, digits[i - 1U]);
+  }
+}
+
+static void ledger_json_write_null(ledger_json_writer_t *writer) {
+  ledger_json_write_cstr(writer, "null");
+}
+
+static void ledger_json_write_key(ledger_json_writer_t *writer, const char *key) {
+  ledger_json_write_byte(writer, (uint8_t)'"');
+  ledger_json_write_cstr(writer, key);
+  ledger_json_write_cstr(writer, "\":");
+}
+
+static void ledger_json_write_optional_u64(ledger_json_writer_t *writer,
+                                           ledger_optional_u64_t value) {
+  if (value.has_value) {
+    ledger_json_write_u64(writer, value.value);
+  } else {
+    ledger_json_write_null(writer);
+  }
+}
+
+static void ledger_json_write_optional_string(ledger_json_writer_t *writer,
+                                              ledger_optional_string_t value) {
+  if (value.has_value) {
+    ledger_json_write_escaped_string(writer, value.value);
+  } else {
+    ledger_json_write_null(writer);
+  }
+}
+
+static void ledger_event_serialize_json_into(ledger_json_writer_t *writer,
+                                             const ledger_event_t *envelope) {
+  /*
+   * docs/LEDGER.md section 8.1:
+   * * keys in exact section 6 schema order
+   * * no extra whitespace
+   * * explicit nulls
+   * * no trailing commas
+   */
+  ledger_json_write_byte(writer, (uint8_t)'{');
+
+  ledger_json_write_key(writer, "event_type");
+  ledger_json_write_escaped_string(writer, envelope->event_type);
+  ledger_json_write_byte(writer, (uint8_t)',');
+
+  ledger_json_write_key(writer, "run_id");
+  ledger_json_write_escaped_string(writer, envelope->run_id);
+  ledger_json_write_byte(writer, (uint8_t)',');
+
+  ledger_json_write_key(writer, "attempt");
+  ledger_json_write_optional_u64(writer, envelope->attempt);
+  ledger_json_write_byte(writer, (uint8_t)',');
+
+  ledger_json_write_key(writer, "artifact_id");
+  ledger_json_write_optional_string(writer, envelope->artifact_id);
+  ledger_json_write_byte(writer, (uint8_t)',');
+
+  ledger_json_write_key(writer, "contract_hash");
+  ledger_json_write_optional_string(writer, envelope->contract_hash);
+  ledger_json_write_byte(writer, (uint8_t)',');
+
+  ledger_json_write_key(writer, "global_ceilings_hash");
+  ledger_json_write_optional_string(writer, envelope->global_ceilings_hash);
+  ledger_json_write_byte(writer, (uint8_t)',');
+
+  ledger_json_write_key(writer, "exemption_manifest_hash");
+  ledger_json_write_optional_string(writer, envelope->exemption_manifest_hash);
+  ledger_json_write_byte(writer, (uint8_t)',');
+
+  ledger_json_write_key(writer, "toolchain_hash");
+  ledger_json_write_optional_string(writer, envelope->toolchain_hash);
+  ledger_json_write_byte(writer, (uint8_t)',');
+
+  ledger_json_write_key(writer, "payload");
+  /*
+   * Payload is opaque to ledger serialization and is emitted verbatim.
+   * Callers provide pre-serialized JSON bytes for the payload value.
+   */
+  ledger_json_write_bytes(writer, envelope->payload.opaque_payload,
+                          envelope->payload.length);
+
+  ledger_json_write_byte(writer, (uint8_t)'}');
 }
 
 static void ledger_sha256_digest_to_hex(const ledger_sha256_digest_t *digest,
@@ -246,4 +436,22 @@ void ledger_event_construct_envelope(
   out_event->exemption_manifest_hash = inputs->exemption_manifest_hash;
   out_event->toolchain_hash = inputs->toolchain_hash;
   out_event->payload = inputs->payload;
+}
+
+void ledger_event_serialize_json(const ledger_event_t *envelope,
+                                 uint8_t *out_bytes,
+                                 ledger_u64_t *in_out_length) {
+  ledger_json_writer_t writer;
+
+  if (envelope == NULL || in_out_length == NULL) {
+    return;
+  }
+
+  writer.bytes = out_bytes;
+  writer.capacity = *in_out_length;
+  writer.length = 0U;
+
+  ledger_event_serialize_json_into(&writer, envelope);
+
+  *in_out_length = writer.length;
 }

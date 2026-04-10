@@ -21,7 +21,8 @@ typedef struct ledger_json_t {
 } ledger_json_t;
 
 typedef struct ledger_payload_ref_t {
-  const void *opaque_payload;
+  const uint8_t *opaque_payload;
+  ledger_u64_t length;
 } ledger_payload_ref_t;
 
 typedef struct ledger_optional_u64_t {
@@ -180,5 +181,20 @@ void ledger_event_populate_envelope_hashes(
 void ledger_event_construct_envelope(
     ledger_event_t *out_event,
     const ledger_event_envelope_inputs_t *inputs);
+
+/*
+ * docs/LEDGER.md section 8.1 canonical JSON rules:
+ * * keys in exact section 6 schema order
+ * * no extra whitespace
+ * * UTF-8 bytes
+ * * no trailing commas
+ * * explicit nulls
+ * * strings escaped only as required by JSON
+ * * numbers emitted unquoted
+ * * hash fields emitted as lowercase hex strings or null
+ */
+void ledger_event_serialize_json(const ledger_event_t *envelope,
+                                 uint8_t *out_bytes,
+                                 ledger_u64_t *in_out_length);
 
 #endif /* CORE_LEDGER_LEDGER_H */
