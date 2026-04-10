@@ -463,6 +463,7 @@ ledger_error_code_t ledger_append_bytes(int fd,
                                         const uint8_t *bytes,
                                         ledger_u64_t length) {
   ledger_u64_t written = 0U;
+  const ledger_u64_t max_write_size = (ledger_u64_t)SIZE_MAX;
 
   /*
    * docs/LEDGER.md section 9:
@@ -482,17 +483,22 @@ ledger_error_code_t ledger_append_bytes(int fd,
   }
 
   while (written < length) {
-    const ssize_t rc = write(fd, bytes + written, (size_t)(length - written));
+    const ledger_u64_t remaining = length - written;
+    const size_t write_size =
+        (size_t)((remaining > max_write_size) ? max_write_size : remaining);
+    const ssize_t rc = write(fd, bytes + written, write_size);
 
     if (rc > 0) {
       written += (ledger_u64_t)rc;
       continue;
     }
 
-    if (rc == -1 && errno == EINTR) {
-      continue;
+    if (rc == -1) {
+      const int saved_errno = errno;
+      if (saved_errno == EINTR) {
+        continue;
+      }
     }
-
     return LEDGER_E_APPEND_FAILURE;
   }
 
