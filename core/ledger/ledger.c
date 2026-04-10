@@ -50,6 +50,9 @@ static char ledger_sha256_hex_digit(uint8_t nibble) {
 }
 
 static void ledger_json_write_byte(ledger_json_writer_t *writer, uint8_t value) {
+  if (writer == NULL) {
+    return;
+  }
   if (writer->length < writer->capacity && writer->bytes != NULL) {
     writer->bytes[writer->length] = value;
   }
@@ -60,6 +63,9 @@ static void ledger_json_write_bytes(ledger_json_writer_t *writer,
                                     const uint8_t *bytes,
                                     ledger_u64_t length) {
   ledger_u64_t i;
+  if (writer == NULL) {
+    return;
+  }
   if (bytes == NULL) {
     /* Preserve required-length accounting when writing into a null sink. */
     writer->length += length;
@@ -73,6 +79,9 @@ static void ledger_json_write_bytes(ledger_json_writer_t *writer,
 static void ledger_json_write_cstr(ledger_json_writer_t *writer,
                                    const char *cstr) {
   const char *it = cstr;
+  if (writer == NULL || cstr == NULL) {
+    return;
+  }
   while (*it != '\0') {
     ledger_json_write_byte(writer, (uint8_t)*it);
     ++it;
