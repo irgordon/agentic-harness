@@ -1,6 +1,7 @@
 #include "ledger.h"
 #include <errno.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -528,7 +529,9 @@ ledger_error_code_t ledger_append_bytes(int fd,
 ledger_error_code_t ledger_emit_event(int fd, const ledger_event_t *event) {
   ledger_event_t envelope;
   ledger_event_envelope_inputs_t envelope_inputs;
+  uint8_t *serialized_json_bytes;
   ledger_u64_t required_json_length = 0U;
+  ledger_u64_t written_json_length;
   ledger_error_code_t append_result;
 
   /*
@@ -569,20 +572,20 @@ ledger_error_code_t ledger_emit_event(int fd, const ledger_event_t *event) {
     return LEDGER_E_SERIALIZATION;
   }
 
-  {
-    const size_t json_buffer_size = (size_t)required_json_length;
-    uint8_t serialized_json_bytes[json_buffer_size];
-    ledger_u64_t written_json_length = required_json_length;
-
-    ledger_event_serialize_json(&envelope, serialized_json_bytes,
-                                &written_json_length);
-    if (written_json_length != required_json_length) {
-      return LEDGER_E_SERIALIZATION;
-    }
-
-    append_result =
-        ledger_append_bytes(fd, serialized_json_bytes, required_json_length);
+  serialized_json_bytes = (uint8_t *)malloc((size_t)required_json_length);
+  if (serialized_json_bytes == NULL) {
+    return LEDGER_E_SERIALIZATION;
   }
+
+  written_json_length = required_json_length;
+  ledger_event_serialize_json(&envelope, serialized_json_bytes, &written_json_length);
+  if (written_json_length != required_json_length) {
+    free(serialized_json_bytes);
+    return LEDGER_E_SERIALIZATION;
+  }
+
+  append_result = ledger_append_bytes(fd, serialized_json_bytes, required_json_length);
+  free(serialized_json_bytes);
 
   return append_result;
 }
