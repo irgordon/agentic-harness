@@ -59,6 +59,9 @@ static void ledger_json_write_bytes(ledger_json_writer_t *writer,
                                     const uint8_t *bytes,
                                     ledger_u64_t length) {
   ledger_u64_t i;
+  if (bytes == NULL) {
+    return;
+  }
   for (i = 0U; i < length; ++i) {
     ledger_json_write_byte(writer, bytes[i]);
   }
@@ -205,8 +208,8 @@ static void ledger_event_serialize_json_into(ledger_json_writer_t *writer,
   ledger_json_write_byte(writer, (uint8_t)',');
 
   ledger_json_write_key(writer, "payload");
-  ledger_json_write_bytes(writer, envelope->payload.canonical_json.bytes,
-                          envelope->payload.canonical_json.length);
+  ledger_json_write_bytes(writer, envelope->payload.opaque_payload,
+                          envelope->payload.length);
 
   ledger_json_write_byte(writer, (uint8_t)'}');
 }

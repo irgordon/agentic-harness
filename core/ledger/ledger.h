@@ -21,7 +21,8 @@ typedef struct ledger_json_t {
 } ledger_json_t;
 
 typedef struct ledger_payload_ref_t {
-  ledger_bytes_t canonical_json;
+  const uint8_t *opaque_payload;
+  ledger_u64_t length;
 } ledger_payload_ref_t;
 
 typedef struct ledger_optional_u64_t {
