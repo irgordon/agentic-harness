@@ -1,6 +1,7 @@
 #include "ledger.h"
 #include <errno.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -171,12 +172,27 @@ static void ledger_json_write_optional_u64(ledger_json_writer_t *writer,
 }
 
 static void ledger_json_write_optional_string(ledger_json_writer_t *writer,
-                                              ledger_optional_string_t value) {
+                                               ledger_optional_string_t value) {
   if (value.has_value) {
     ledger_json_write_escaped_string(writer, value.value);
   } else {
     ledger_json_write_null(writer);
   }
+}
+
+static bool ledger_string_is_well_formed(ledger_string_t value) {
+  return (value.length == 0U) || (value.bytes != NULL);
+}
+
+static bool ledger_optional_string_is_well_formed(ledger_optional_string_t value) {
+  if (!value.has_value) {
+    return true;
+  }
+  return ledger_string_is_well_formed(value.value);
+}
+
+static bool ledger_payload_ref_is_well_formed(ledger_payload_ref_t payload) {
+  return (payload.length == 0U) || (payload.opaque_payload != NULL);
 }
 
 static void ledger_event_serialize_json_into(ledger_json_writer_t *writer,
@@ -508,4 +524,68 @@ ledger_error_code_t ledger_append_bytes(int fd,
   }
 
   return (ledger_error_code_t)0;
+}
+
+ledger_error_code_t ledger_emit_event(int fd, const ledger_event_t *event) {
+  ledger_event_t envelope;
+  ledger_event_envelope_inputs_t envelope_inputs;
+  uint8_t *serialized_json_bytes;
+  ledger_u64_t required_json_length = 0U;
+  ledger_u64_t written_json_length;
+  ledger_error_code_t append_result;
+
+  /*
+   * Mechanical emission only:
+   * event -> envelope construction -> canonical JSON serialization -> append.
+   * No event semantic interpretation or grammar enforcement is performed here.
+   */
+  if (event == NULL) {
+    return LEDGER_E_INVALID_EVENT_SCHEMA;
+  }
+
+  if (!ledger_string_is_well_formed(event->event_type) ||
+      !ledger_string_is_well_formed(event->run_id) ||
+      !ledger_optional_string_is_well_formed(event->artifact_id) ||
+      !ledger_optional_string_is_well_formed(event->contract_hash) ||
+      !ledger_optional_string_is_well_formed(event->global_ceilings_hash) ||
+      !ledger_optional_string_is_well_formed(event->exemption_manifest_hash) ||
+      !ledger_optional_string_is_well_formed(event->toolchain_hash) ||
+      !ledger_payload_ref_is_well_formed(event->payload)) {
+    return LEDGER_E_INVALID_EVENT_SCHEMA;
+  }
+
+  envelope_inputs.event_type = event->event_type;
+  envelope_inputs.run_id = event->run_id;
+  envelope_inputs.attempt = event->attempt;
+  envelope_inputs.artifact_id = event->artifact_id;
+  envelope_inputs.contract_hash = event->contract_hash;
+  envelope_inputs.global_ceilings_hash = event->global_ceilings_hash;
+  envelope_inputs.exemption_manifest_hash = event->exemption_manifest_hash;
+  envelope_inputs.toolchain_hash = event->toolchain_hash;
+  envelope_inputs.payload = event->payload;
+
+  ledger_event_construct_envelope(&envelope, &envelope_inputs);
+
+  ledger_event_serialize_json(&envelope, NULL, &required_json_length);
+  if (required_json_length == 0U ||
+      required_json_length > (ledger_u64_t)SIZE_MAX) {
+    return LEDGER_E_SERIALIZATION;
+  }
+
+  serialized_json_bytes = (uint8_t *)malloc((size_t)required_json_length);
+  if (serialized_json_bytes == NULL) {
+    return LEDGER_E_SERIALIZATION;
+  }
+
+  written_json_length = required_json_length;
+  ledger_event_serialize_json(&envelope, serialized_json_bytes, &written_json_length);
+  if (written_json_length != required_json_length) {
+    free(serialized_json_bytes);
+    return LEDGER_E_SERIALIZATION;
+  }
+
+  append_result = ledger_append_bytes(fd, serialized_json_bytes, required_json_length);
+  free(serialized_json_bytes);
+
+  return append_result;
 }
