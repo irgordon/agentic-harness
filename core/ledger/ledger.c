@@ -1,5 +1,6 @@
 #include "ledger.h"
 #include <errno.h>
+#include <stdatomic.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -17,6 +18,34 @@ typedef struct ledger_json_writer_t {
   /* Tracks required output size even when buffer capacity is insufficient. */
   ledger_u64_t length;
 } ledger_json_writer_t;
+
+struct ledger_emission_lock_t {
+  atomic_flag held;
+};
+
+/*
+ * docs/LEDGER.md section 2 + section 10 invariants:
+ * * single-writer serial event emission
+ * * no parallel writes
+ * * no asynchronous buffering
+ */
+static ledger_emission_lock_t ledger_global_emission_lock = {
+    ATOMIC_FLAG_INIT};
+
+void ledger_emission_lock_acquire(ledger_emission_lock_t *lock) {
+  if (lock == NULL) {
+    abort();
+  }
+  while (atomic_flag_test_and_set_explicit(&lock->held, memory_order_acquire)) {
+  }
+}
+
+void ledger_emission_lock_release(ledger_emission_lock_t *lock) {
+  if (lock == NULL) {
+    abort();
+  }
+  atomic_flag_clear_explicit(&lock->held, memory_order_release);
+}
 
 static uint32_t ledger_sha256_rotr(uint32_t value, uint32_t shift) {
   return (value >> shift) | (value << (32U - shift));
@@ -532,7 +561,7 @@ ledger_error_code_t ledger_emit_event(int fd, const ledger_event_t *event) {
   uint8_t *serialized_json_bytes;
   ledger_u64_t required_json_length = 0U;
   ledger_u64_t written_json_length;
-  ledger_error_code_t append_result;
+  ledger_error_code_t result = (ledger_error_code_t)0;
 
   /*
    * Mechanical emission only:
@@ -554,6 +583,13 @@ ledger_error_code_t ledger_emit_event(int fd, const ledger_event_t *event) {
     return LEDGER_E_INVALID_EVENT_SCHEMA;
   }
 
+  /*
+   * docs/LEDGER.md section 2 + section 10:
+   * acquire ledger-owned single-writer lock before envelope construction and
+   * release after append path completes.
+   */
+  ledger_emission_lock_acquire(&ledger_global_emission_lock);
+
   envelope_inputs.event_type = event->event_type;
   envelope_inputs.run_id = event->run_id;
   envelope_inputs.attempt = event->attempt;
@@ -569,23 +605,28 @@ ledger_error_code_t ledger_emit_event(int fd, const ledger_event_t *event) {
   ledger_event_serialize_json(&envelope, NULL, &required_json_length);
   if (required_json_length == 0U ||
       required_json_length > (ledger_u64_t)SIZE_MAX) {
-    return LEDGER_E_SERIALIZATION;
+    result = LEDGER_E_SERIALIZATION;
+    goto release_emission_lock;
   }
 
   serialized_json_bytes = (uint8_t *)malloc((size_t)required_json_length);
   if (serialized_json_bytes == NULL) {
-    return LEDGER_E_SERIALIZATION;
+    result = LEDGER_E_SERIALIZATION;
+    goto release_emission_lock;
   }
 
   written_json_length = required_json_length;
   ledger_event_serialize_json(&envelope, serialized_json_bytes, &written_json_length);
   if (written_json_length != required_json_length) {
     free(serialized_json_bytes);
-    return LEDGER_E_SERIALIZATION;
+    result = LEDGER_E_SERIALIZATION;
+    goto release_emission_lock;
   }
 
-  append_result = ledger_append_bytes(fd, serialized_json_bytes, required_json_length);
+  result = ledger_append_bytes(fd, serialized_json_bytes, required_json_length);
   free(serialized_json_bytes);
 
-  return append_result;
+release_emission_lock:
+  ledger_emission_lock_release(&ledger_global_emission_lock);
+  return result;
 }

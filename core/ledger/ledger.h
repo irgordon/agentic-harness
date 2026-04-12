@@ -151,6 +151,8 @@ typedef struct ledger_event_hash_storage_t {
   char toolchain_hash[LEDGER_SHA256_HEX_STORAGE_LENGTH];
 } ledger_event_hash_storage_t;
 
+typedef struct ledger_emission_lock_t ledger_emission_lock_t;
+
 /*
  * docs/LEDGER.md section 6.1:
  * * **Algorithm:** SHA-256
@@ -211,6 +213,16 @@ void ledger_event_serialize_json(const ledger_event_t *envelope,
 ledger_error_code_t ledger_append_bytes(int fd,
                                         const uint8_t *bytes,
                                         ledger_u64_t length);
+
+/*
+ * docs/LEDGER.md section 2 + section 10:
+ * * Single-writer, serial event emission.
+ * * No parallel writes or async buffering.
+ *
+ * This lock is ledger-owned and opaque outside ledger internals.
+ */
+void ledger_emission_lock_acquire(ledger_emission_lock_t *lock);
+void ledger_emission_lock_release(ledger_emission_lock_t *lock);
 
 /*
  * Mechanical deterministic emission only:
