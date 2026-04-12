@@ -1,5 +1,6 @@
 #include "ledger.h"
 #include <errno.h>
+#include <sched.h>
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -37,6 +38,7 @@ void ledger_emission_lock_acquire(ledger_emission_lock_t *lock) {
     abort();
   }
   while (atomic_flag_test_and_set_explicit(&lock->held, memory_order_acquire)) {
+    (void)sched_yield();
   }
 }
 
