@@ -152,6 +152,7 @@ typedef struct ledger_event_hash_storage_t {
 } ledger_event_hash_storage_t;
 
 typedef struct ledger_emission_lock_t ledger_emission_lock_t;
+typedef struct ledger_grammar_state_t ledger_grammar_state_t;
 
 /*
  * docs/LEDGER.md section 6.1:
@@ -225,9 +226,22 @@ void ledger_emission_lock_acquire(ledger_emission_lock_t *lock);
 void ledger_emission_lock_release(ledger_emission_lock_t *lock);
 
 /*
+ * docs/LEDGER.md sections 5, 6, and 10:
+ * * validate only structural event grammar constraints
+ * * enforce schema-required/non-nullable fields and event ordering
+ * * maintain serial single-writer grammar progression
+ * This function MUST NOT interpret policy, business meaning, or tool semantics.
+ */
+ledger_error_code_t ledger_validate_event_grammar(
+    const ledger_event_t *event,
+    const ledger_grammar_state_t *state,
+    ledger_grammar_state_t *out_next_state);
+
+/*
  * Mechanical deterministic emission only:
  * event -> canonical envelope -> canonical JSON bytes -> append-only write.
- * This function does not interpret event semantics, grammar, or policy.
+ * Grammar validation is structural only and runs before envelope construction.
+ * This function does not interpret policy or business semantics.
  */
 ledger_error_code_t ledger_emit_event(int fd, const ledger_event_t *event);
 
