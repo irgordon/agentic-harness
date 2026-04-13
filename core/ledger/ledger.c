@@ -4,6 +4,7 @@
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -24,6 +25,26 @@ struct ledger_emission_lock_t {
   atomic_flag held;
 };
 
+typedef enum ledger_grammar_phase_t {
+  LEDGER_GRAMMAR_PHASE_START = 0,
+  LEDGER_GRAMMAR_PHASE_EXPECT_RUN_ABORTED,
+  LEDGER_GRAMMAR_PHASE_BUDGET,
+  LEDGER_GRAMMAR_PHASE_BUDGET_AFTER_DERIVED,
+  LEDGER_GRAMMAR_PHASE_ATTEMPT_GENERATION,
+  LEDGER_GRAMMAR_PHASE_ATTEMPT_AFTER_GENERATION_ATTEMPTED,
+  LEDGER_GRAMMAR_PHASE_ATTEMPT_AFTER_GENERATION_SUCCEEDED,
+  LEDGER_GRAMMAR_PHASE_ATTEMPT_AFTER_STATIC_ANALYSIS_PASSED,
+  LEDGER_GRAMMAR_PHASE_ATTEMPT_EXPECT_ATTEMPT_FAILED,
+  LEDGER_GRAMMAR_PHASE_ATTEMPT_EXPECT_ATTEMPT_PASSED,
+  LEDGER_GRAMMAR_PHASE_FREEZE,
+  LEDGER_GRAMMAR_PHASE_EXPECT_RUN_SUCCESS,
+  LEDGER_GRAMMAR_PHASE_TERMINAL
+} ledger_grammar_phase_t;
+
+struct ledger_grammar_state_t {
+  ledger_grammar_phase_t phase;
+};
+
 /*
  * docs/LEDGER.md section 2 + section 10 invariants:
  * * single-writer serial event emission
@@ -32,6 +53,8 @@ struct ledger_emission_lock_t {
  */
 static ledger_emission_lock_t ledger_global_emission_lock = {
     ATOMIC_FLAG_INIT};
+static ledger_grammar_state_t ledger_global_grammar_state = {
+    LEDGER_GRAMMAR_PHASE_START};
 
 void ledger_emission_lock_acquire(ledger_emission_lock_t *lock) {
   if (lock == NULL) {
@@ -224,6 +247,98 @@ static bool ledger_optional_string_is_well_formed(ledger_optional_string_t value
 
 static bool ledger_payload_ref_is_well_formed(ledger_payload_ref_t payload) {
   return (payload.length == 0U) || (payload.opaque_payload != NULL);
+}
+
+static bool ledger_string_equals_cstr(ledger_string_t value, const char *literal) {
+  size_t literal_length;
+  if (value.bytes == NULL || literal == NULL) {
+    return false;
+  }
+  literal_length = strlen(literal);
+  if (value.length != (ledger_u64_t)literal_length) {
+    return false;
+  }
+  return memcmp(value.bytes, literal, literal_length) == 0;
+}
+
+typedef enum ledger_event_kind_t {
+  LEDGER_EVENT_KIND_INVALID = 0,
+  LEDGER_EVENT_KIND_CONTRACT_ACCEPTED,
+  LEDGER_EVENT_KIND_CONTRACT_REJECTED,
+  LEDGER_EVENT_KIND_BUDGET_DERIVED,
+  LEDGER_EVENT_KIND_EXEMPTION_APPLIED,
+  LEDGER_EVENT_KIND_BUDGET_FAILED,
+  LEDGER_EVENT_KIND_GENERATION_ATTEMPTED,
+  LEDGER_EVENT_KIND_GENERATION_FAILED,
+  LEDGER_EVENT_KIND_GENERATION_SUCCEEDED,
+  LEDGER_EVENT_KIND_STATIC_ANALYSIS_PASSED,
+  LEDGER_EVENT_KIND_STATIC_ANALYSIS_FAILED,
+  LEDGER_EVENT_KIND_TESTS_PASSED,
+  LEDGER_EVENT_KIND_TESTS_FAILED,
+  LEDGER_EVENT_KIND_ATTEMPT_FAILED,
+  LEDGER_EVENT_KIND_ATTEMPT_PASSED,
+  LEDGER_EVENT_KIND_ARTIFACT_FROZEN,
+  LEDGER_EVENT_KIND_FREEZE_FAILED,
+  LEDGER_EVENT_KIND_RUN_SUCCESS,
+  LEDGER_EVENT_KIND_RUN_ABORTED
+} ledger_event_kind_t;
+
+static ledger_event_kind_t ledger_event_kind_from_type(ledger_string_t event_type) {
+  if (ledger_string_equals_cstr(event_type, "CONTRACT_ACCEPTED")) {
+    return LEDGER_EVENT_KIND_CONTRACT_ACCEPTED;
+  }
+  if (ledger_string_equals_cstr(event_type, "CONTRACT_REJECTED")) {
+    return LEDGER_EVENT_KIND_CONTRACT_REJECTED;
+  }
+  if (ledger_string_equals_cstr(event_type, "BUDGET_DERIVED")) {
+    return LEDGER_EVENT_KIND_BUDGET_DERIVED;
+  }
+  if (ledger_string_equals_cstr(event_type, "EXEMPTION_APPLIED")) {
+    return LEDGER_EVENT_KIND_EXEMPTION_APPLIED;
+  }
+  if (ledger_string_equals_cstr(event_type, "BUDGET_FAILED")) {
+    return LEDGER_EVENT_KIND_BUDGET_FAILED;
+  }
+  if (ledger_string_equals_cstr(event_type, "GENERATION_ATTEMPTED")) {
+    return LEDGER_EVENT_KIND_GENERATION_ATTEMPTED;
+  }
+  if (ledger_string_equals_cstr(event_type, "GENERATION_FAILED")) {
+    return LEDGER_EVENT_KIND_GENERATION_FAILED;
+  }
+  if (ledger_string_equals_cstr(event_type, "GENERATION_SUCCEEDED")) {
+    return LEDGER_EVENT_KIND_GENERATION_SUCCEEDED;
+  }
+  if (ledger_string_equals_cstr(event_type, "STATIC_ANALYSIS_PASSED")) {
+    return LEDGER_EVENT_KIND_STATIC_ANALYSIS_PASSED;
+  }
+  if (ledger_string_equals_cstr(event_type, "STATIC_ANALYSIS_FAILED")) {
+    return LEDGER_EVENT_KIND_STATIC_ANALYSIS_FAILED;
+  }
+  if (ledger_string_equals_cstr(event_type, "TESTS_PASSED")) {
+    return LEDGER_EVENT_KIND_TESTS_PASSED;
+  }
+  if (ledger_string_equals_cstr(event_type, "TESTS_FAILED")) {
+    return LEDGER_EVENT_KIND_TESTS_FAILED;
+  }
+  if (ledger_string_equals_cstr(event_type, "ATTEMPT_FAILED")) {
+    return LEDGER_EVENT_KIND_ATTEMPT_FAILED;
+  }
+  if (ledger_string_equals_cstr(event_type, "ATTEMPT_PASSED")) {
+    return LEDGER_EVENT_KIND_ATTEMPT_PASSED;
+  }
+  if (ledger_string_equals_cstr(event_type, "ARTIFACT_FROZEN")) {
+    return LEDGER_EVENT_KIND_ARTIFACT_FROZEN;
+  }
+  if (ledger_string_equals_cstr(event_type, "FREEZE_FAILED")) {
+    return LEDGER_EVENT_KIND_FREEZE_FAILED;
+  }
+  if (ledger_string_equals_cstr(event_type, "RUN_SUCCESS")) {
+    return LEDGER_EVENT_KIND_RUN_SUCCESS;
+  }
+  if (ledger_string_equals_cstr(event_type, "RUN_ABORTED")) {
+    return LEDGER_EVENT_KIND_RUN_ABORTED;
+  }
+  return LEDGER_EVENT_KIND_INVALID;
 }
 
 static void ledger_event_serialize_json_into(ledger_json_writer_t *writer,
@@ -557,18 +672,179 @@ ledger_error_code_t ledger_append_bytes(int fd,
   return (ledger_error_code_t)0;
 }
 
+ledger_error_code_t ledger_validate_event_grammar(
+    const ledger_event_t *event,
+    const ledger_grammar_state_t *state,
+    ledger_grammar_state_t *out_next_state) {
+  ledger_event_kind_t event_kind;
+  ledger_grammar_state_t next_state;
+
+  /*
+   * docs/LEDGER.md section 6:
+   * * event_type and run_id are required string fields
+   * * payload is a required object field (non-null)
+   *
+   * docs/LEDGER.md section 5:
+   * * event types are constrained to the V1 grammar set
+   * * transitions must follow declared phase ordering
+   *
+   * docs/LEDGER.md section 10:
+   * * state progression is single-writer and serial
+   */
+  if (event == NULL || state == NULL || out_next_state == NULL) {
+    return LEDGER_E_INVALID_EVENT_SCHEMA;
+  }
+
+  if (event->event_type.length == 0U || event->run_id.length == 0U ||
+      event->event_type.bytes == NULL || event->run_id.bytes == NULL ||
+      event->payload.length == 0U || event->payload.opaque_payload == NULL) {
+    return LEDGER_E_INVALID_EVENT_SCHEMA;
+  }
+
+  event_kind = ledger_event_kind_from_type(event->event_type);
+  if (event_kind == LEDGER_EVENT_KIND_INVALID) {
+    return LEDGER_E_INVALID_EVENT_SCHEMA;
+  }
+
+  next_state = *state;
+  switch (state->phase) {
+    case LEDGER_GRAMMAR_PHASE_START:
+      if (event_kind == LEDGER_EVENT_KIND_CONTRACT_ACCEPTED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_BUDGET;
+        break;
+      }
+      if (event_kind == LEDGER_EVENT_KIND_CONTRACT_REJECTED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_EXPECT_RUN_ABORTED;
+        break;
+      }
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+
+    case LEDGER_GRAMMAR_PHASE_BUDGET:
+      if (event_kind == LEDGER_EVENT_KIND_BUDGET_DERIVED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_BUDGET_AFTER_DERIVED;
+        break;
+      }
+      if (event_kind == LEDGER_EVENT_KIND_BUDGET_FAILED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_EXPECT_RUN_ABORTED;
+        break;
+      }
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+
+    case LEDGER_GRAMMAR_PHASE_BUDGET_AFTER_DERIVED:
+      if (event_kind == LEDGER_EVENT_KIND_EXEMPTION_APPLIED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_BUDGET_AFTER_DERIVED;
+        break;
+      }
+      if (event_kind == LEDGER_EVENT_KIND_GENERATION_ATTEMPTED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_ATTEMPT_AFTER_GENERATION_ATTEMPTED;
+        break;
+      }
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+
+    case LEDGER_GRAMMAR_PHASE_ATTEMPT_GENERATION:
+      if (event_kind == LEDGER_EVENT_KIND_GENERATION_ATTEMPTED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_ATTEMPT_AFTER_GENERATION_ATTEMPTED;
+        break;
+      }
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+
+    case LEDGER_GRAMMAR_PHASE_ATTEMPT_AFTER_GENERATION_ATTEMPTED:
+      if (event_kind == LEDGER_EVENT_KIND_GENERATION_FAILED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_ATTEMPT_EXPECT_ATTEMPT_FAILED;
+        break;
+      }
+      if (event_kind == LEDGER_EVENT_KIND_GENERATION_SUCCEEDED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_ATTEMPT_AFTER_GENERATION_SUCCEEDED;
+        break;
+      }
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+
+    case LEDGER_GRAMMAR_PHASE_ATTEMPT_AFTER_GENERATION_SUCCEEDED:
+      if (event_kind == LEDGER_EVENT_KIND_STATIC_ANALYSIS_FAILED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_ATTEMPT_EXPECT_ATTEMPT_FAILED;
+        break;
+      }
+      if (event_kind == LEDGER_EVENT_KIND_STATIC_ANALYSIS_PASSED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_ATTEMPT_AFTER_STATIC_ANALYSIS_PASSED;
+        break;
+      }
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+
+    case LEDGER_GRAMMAR_PHASE_ATTEMPT_AFTER_STATIC_ANALYSIS_PASSED:
+      if (event_kind == LEDGER_EVENT_KIND_TESTS_FAILED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_ATTEMPT_EXPECT_ATTEMPT_FAILED;
+        break;
+      }
+      if (event_kind == LEDGER_EVENT_KIND_TESTS_PASSED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_ATTEMPT_EXPECT_ATTEMPT_PASSED;
+        break;
+      }
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+
+    case LEDGER_GRAMMAR_PHASE_ATTEMPT_EXPECT_ATTEMPT_FAILED:
+      if (event_kind == LEDGER_EVENT_KIND_ATTEMPT_FAILED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_ATTEMPT_GENERATION;
+        break;
+      }
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+
+    case LEDGER_GRAMMAR_PHASE_ATTEMPT_EXPECT_ATTEMPT_PASSED:
+      if (event_kind == LEDGER_EVENT_KIND_ATTEMPT_PASSED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_FREEZE;
+        break;
+      }
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+
+    case LEDGER_GRAMMAR_PHASE_FREEZE:
+      if (event_kind == LEDGER_EVENT_KIND_ARTIFACT_FROZEN) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_EXPECT_RUN_SUCCESS;
+        break;
+      }
+      if (event_kind == LEDGER_EVENT_KIND_FREEZE_FAILED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_EXPECT_RUN_ABORTED;
+        break;
+      }
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+
+    case LEDGER_GRAMMAR_PHASE_EXPECT_RUN_SUCCESS:
+      if (event_kind == LEDGER_EVENT_KIND_RUN_SUCCESS) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_TERMINAL;
+        break;
+      }
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+
+    case LEDGER_GRAMMAR_PHASE_EXPECT_RUN_ABORTED:
+      if (event_kind == LEDGER_EVENT_KIND_RUN_ABORTED) {
+        next_state.phase = LEDGER_GRAMMAR_PHASE_TERMINAL;
+        break;
+      }
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+
+    case LEDGER_GRAMMAR_PHASE_TERMINAL:
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+
+    default:
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+  }
+
+  *out_next_state = next_state;
+  return (ledger_error_code_t)0;
+}
+
 ledger_error_code_t ledger_emit_event(int fd, const ledger_event_t *event) {
   ledger_event_t envelope;
   ledger_event_envelope_inputs_t envelope_inputs;
+  ledger_grammar_state_t next_grammar_state;
   uint8_t *serialized_json_bytes;
   ledger_u64_t required_json_length = 0U;
   ledger_u64_t written_json_length;
   ledger_error_code_t result = (ledger_error_code_t)0;
 
   /*
-   * Mechanical emission only:
-   * event -> envelope construction -> canonical JSON serialization -> append.
-   * No event semantic interpretation or grammar enforcement is performed here.
+   * Mechanical emission with structural grammar safety:
+   * event -> grammar validation -> envelope construction -> canonical JSON
+   * serialization -> append.
+   * No policy, toolchain, or business-meaning interpretation is performed.
    */
   if (event == NULL) {
     return LEDGER_E_INVALID_EVENT_SCHEMA;
@@ -591,6 +867,13 @@ ledger_error_code_t ledger_emit_event(int fd, const ledger_event_t *event) {
    * release after append path completes.
    */
   ledger_emission_lock_acquire(&ledger_global_emission_lock);
+
+  result = ledger_validate_event_grammar(event, &ledger_global_grammar_state,
+                                         &next_grammar_state);
+  if (result != (ledger_error_code_t)0) {
+    goto release_emission_lock;
+  }
+  ledger_global_grammar_state = next_grammar_state;
 
   envelope_inputs.event_type = event->event_type;
   envelope_inputs.run_id = event->run_id;
