@@ -45,6 +45,18 @@ struct ledger_grammar_state_t {
   ledger_grammar_phase_t phase;
 };
 
+typedef enum ledger_lifecycle_phase_t {
+  LEDGER_LIFECYCLE_PHASE_NOT_STARTED = 0,
+  LEDGER_LIFECYCLE_PHASE_STARTED,
+  LEDGER_LIFECYCLE_PHASE_ENDED
+} ledger_lifecycle_phase_t;
+
+struct ledger_lifecycle_state_t {
+  ledger_lifecycle_phase_t phase;
+  bool has_run_id_digest;
+  ledger_sha256_digest_t run_id_digest;
+};
+
 /*
  * docs/LEDGER.md section 2 + section 10 invariants:
  * * single-writer serial event emission
@@ -55,6 +67,8 @@ static ledger_emission_lock_t ledger_global_emission_lock = {
     ATOMIC_FLAG_INIT};
 static ledger_grammar_state_t ledger_global_grammar_state = {
     LEDGER_GRAMMAR_PHASE_START};
+static ledger_lifecycle_state_t ledger_global_lifecycle_state = {
+    LEDGER_LIFECYCLE_PHASE_NOT_STARTED, false, {{0U}}};
 
 void ledger_emission_lock_acquire(ledger_emission_lock_t *lock) {
   if (lock == NULL) {
@@ -339,6 +353,16 @@ static ledger_event_kind_t ledger_event_kind_from_type(ledger_string_t event_typ
     return LEDGER_EVENT_KIND_RUN_ABORTED;
   }
   return LEDGER_EVENT_KIND_INVALID;
+}
+
+static bool ledger_event_kind_is_run_start(ledger_event_kind_t event_kind) {
+  return event_kind == LEDGER_EVENT_KIND_CONTRACT_ACCEPTED ||
+         event_kind == LEDGER_EVENT_KIND_CONTRACT_REJECTED;
+}
+
+static bool ledger_event_kind_is_run_end(ledger_event_kind_t event_kind) {
+  return event_kind == LEDGER_EVENT_KIND_RUN_SUCCESS ||
+         event_kind == LEDGER_EVENT_KIND_RUN_ABORTED;
 }
 
 static void ledger_event_serialize_json_into(ledger_json_writer_t *writer,
@@ -831,10 +855,80 @@ ledger_error_code_t ledger_validate_event_grammar(
   return (ledger_error_code_t)0;
 }
 
+ledger_error_code_t ledger_validate_run_lifecycle(
+    const ledger_event_t *event,
+    const ledger_lifecycle_state_t *state,
+    ledger_lifecycle_state_t *out_next_state) {
+  ledger_lifecycle_state_t next_state;
+  ledger_event_kind_t event_kind;
+  ledger_sha256_digest_t run_id_digest;
+
+  /*
+   * docs/LEDGER.md section 4:
+   * * run_id is immutable within a run.
+   *
+   * docs/LEDGER.md section 5 and docs/RUN_MODEL.md section 9:
+   * * stream is anchored by the start event boundary
+   * * exactly one terminal event per run
+   * * terminal event is final (no later events in that run)
+   *
+   * Structural only: no payload/business/policy interpretation.
+   */
+  if (event == NULL || state == NULL || out_next_state == NULL) {
+    return LEDGER_E_INVALID_EVENT_SCHEMA;
+  }
+
+  event_kind = ledger_event_kind_from_type(event->event_type);
+  if (event_kind == LEDGER_EVENT_KIND_INVALID) {
+    return LEDGER_E_INVALID_EVENT_SCHEMA;
+  }
+
+  next_state = *state;
+  if (next_state.phase == LEDGER_LIFECYCLE_PHASE_NOT_STARTED) {
+    if (!ledger_event_kind_is_run_start(event_kind)) {
+      return LEDGER_E_INVALID_EVENT_SCHEMA;
+    }
+
+    ledger_sha256_digest((const uint8_t *)event->run_id.bytes, event->run_id.length,
+                         &next_state.run_id_digest);
+    next_state.has_run_id_digest = true;
+    next_state.phase = LEDGER_LIFECYCLE_PHASE_STARTED;
+    *out_next_state = next_state;
+    return (ledger_error_code_t)0;
+  }
+
+  if (!state->has_run_id_digest) {
+    return LEDGER_E_INVALID_EVENT_SCHEMA;
+  }
+
+  ledger_sha256_digest((const uint8_t *)event->run_id.bytes, event->run_id.length,
+                       &run_id_digest);
+  if (memcmp(run_id_digest.bytes, state->run_id_digest.bytes,
+             LEDGER_SHA256_DIGEST_SIZE) != 0) {
+    return LEDGER_E_INVALID_EVENT_SCHEMA;
+  }
+
+  if (state->phase == LEDGER_LIFECYCLE_PHASE_ENDED) {
+    return LEDGER_E_INVALID_EVENT_SCHEMA;
+  }
+
+  if (ledger_event_kind_is_run_start(event_kind)) {
+    return LEDGER_E_INVALID_EVENT_SCHEMA;
+  }
+
+  if (ledger_event_kind_is_run_end(event_kind)) {
+    next_state.phase = LEDGER_LIFECYCLE_PHASE_ENDED;
+  }
+
+  *out_next_state = next_state;
+  return (ledger_error_code_t)0;
+}
+
 ledger_error_code_t ledger_emit_event(int fd, const ledger_event_t *event) {
   ledger_event_t envelope;
   ledger_event_envelope_inputs_t envelope_inputs;
   ledger_grammar_state_t next_grammar_state;
+  ledger_lifecycle_state_t next_lifecycle_state;
   uint8_t *serialized_json_bytes;
   ledger_u64_t required_json_length = 0U;
   ledger_u64_t written_json_length;
@@ -873,7 +967,15 @@ ledger_error_code_t ledger_emit_event(int fd, const ledger_event_t *event) {
   if (result != (ledger_error_code_t)0) {
     goto release_emission_lock;
   }
+
+  result = ledger_validate_run_lifecycle(event, &ledger_global_lifecycle_state,
+                                         &next_lifecycle_state);
+  if (result != (ledger_error_code_t)0) {
+    goto release_emission_lock;
+  }
+
   ledger_global_grammar_state = next_grammar_state;
+  ledger_global_lifecycle_state = next_lifecycle_state;
 
   envelope_inputs.event_type = event->event_type;
   envelope_inputs.run_id = event->run_id;

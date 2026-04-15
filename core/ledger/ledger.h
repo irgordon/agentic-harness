@@ -153,6 +153,7 @@ typedef struct ledger_event_hash_storage_t {
 
 typedef struct ledger_emission_lock_t ledger_emission_lock_t;
 typedef struct ledger_grammar_state_t ledger_grammar_state_t;
+typedef struct ledger_lifecycle_state_t ledger_lifecycle_state_t;
 
 /*
  * docs/LEDGER.md section 6.1:
@@ -236,6 +237,18 @@ ledger_error_code_t ledger_validate_event_grammar(
     const ledger_event_t *event,
     const ledger_grammar_state_t *state,
     ledger_grammar_state_t *out_next_state);
+
+/*
+ * docs/LEDGER.md section 4 + section 5 and docs/RUN_MODEL.md section 9:
+ * * run_id is immutable within a run lifecycle
+ * * stream must begin with a valid run-start event
+ * * terminal run-end event is unique and final for that run
+ * This function enforces only structural run lifecycle validity.
+ */
+ledger_error_code_t ledger_validate_run_lifecycle(
+    const ledger_event_t *event,
+    const ledger_lifecycle_state_t *state,
+    ledger_lifecycle_state_t *out_next_state);
 
 /*
  * Mechanical deterministic emission only:
