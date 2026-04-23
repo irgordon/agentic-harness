@@ -63,24 +63,3 @@ gi_error_code_t gi_validate_response(const gi_generator_response_t *response) {
 
   return (gi_error_code_t)0;
 }
-
-
-gi_error_code_t gi_validate_response_for_request(
-    const gi_generator_response_t *response,
-    gi_string_t expected_request_id) {
-  gi_u64_t i;
-  gi_error_code_t base = gi_validate_response(response);
-  if (base != 0) {
-    return base;
-  }
-  if (expected_request_id.bytes == NULL ||
-      response->request_id.length != expected_request_id.length) {
-    return GEN_E_PROTOCOL;
-  }
-  for (i = 0U; i < expected_request_id.length; ++i) {
-    if (response->request_id.bytes[i] != expected_request_id.bytes[i]) {
-      return GEN_E_PROTOCOL;
-    }
-  }
-  return (gi_error_code_t)0;
-}

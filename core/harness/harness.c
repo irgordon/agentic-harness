@@ -4,14 +4,9 @@
 #include "../generator_interface/generator_interface.h"
 #include "../normalization/normalization.h"
 
-#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-typedef enum log_mode_t { LOG_MODE_TEXT = 0, LOG_MODE_JSON = 1 } log_mode_t;
-
-static unsigned long long g_log_counter = 0ULL;
 
 static int read_file(const char *path, uint8_t **out_bytes, size_t *out_len) {
   FILE *fp;
@@ -69,50 +64,26 @@ static int write_text_file(const char *path, const char *text) {
   return 0;
 }
 
-static void log_line(log_mode_t mode, const char *level, const char *msg) {
-  g_log_counter += 1ULL;
-  if (mode == LOG_MODE_JSON) {
-    fprintf(stderr,
-            "{\"t\":%llu,\"level\":\"%s\",\"msg\":\"%s\"}\n",
-            g_log_counter, level, msg);
-  } else {
-    fprintf(stderr, "[%llu] %s %s\n", g_log_counter, level, msg);
-  }
-}
-
 static void print_usage(void) {
   fprintf(stderr,
           "Usage:\n"
-          "  harness_cli init [--log-json|--log-text]\n"
-          "  harness_cli run --contract <file> --ceilings <file> --exemptions <file> "
-          "--artifact <file> [--out-ledger <file>] [--log-json|--log-text]\n"
-          "  harness_cli ledger replay <ledger.jsonl> [--log-json|--log-text]\n"
-          "  harness_cli run diff <ledgerA.jsonl> <ledgerB.jsonl> [--log-json|--log-text]\n");
+          "  harness init\n"
+          "  harness run --contract <file> --ceilings <file> --exemptions <file> "
+          "--artifact <file> [--out-ledger <file>]\n");
 }
 
-static log_mode_t parse_log_mode(int argc, char **argv) {
-  int i;
-  for (i = 1; i < argc; ++i) {
-    if (strcmp(argv[i], "--log-json") == 0) {
-      return LOG_MODE_JSON;
-    }
-  }
-  return LOG_MODE_TEXT;
-}
-
-static int command_init(log_mode_t mode) {
+static int command_init(void) {
   const char *manifest =
-      "{\"manifest_version\":\"1.1.0\",\"compiler\":{\"name\":\"cc\",\"version\":\"unknown\",\"flags\":[\"-O0\",\"-Wall\",\"-Wextra\",\"-Werror\"]},\"runtime\":{\"language\":\"c\",\"stdlib_implementation\":\"libc\",\"stdlib_version\":\"unknown\"},\"build\":{\"flags\":[\"-fno-ident\",\"-fno-omit-frame-pointer\",\"-fno-common\"],\"deterministic_mode\":true},\"hashing\":{\"algorithm\":\"fnv1a64\"},\"normalization\":{\"normalization_spec_version\":\"1.0.0\",\"normalization_engine_version\":\"0.1.0\"},\"interfaces\":{\"generator_interface_spec_version\":\"1.0.0\"},\"platform\":{\"os\":\"unknown\",\"arch\":\"unknown\"},\"subsystems\":{\"budget_compiler\":\"0.1.0\",\"static_analysis\":\"0.1.0\",\"harness\":\"0.2.0\"}}\n";
+      "{\"manifest_version\":\"1.1.0\",\"compiler\":{\"name\":\"cc\",\"version\":\"unknown\",\"flags\":[\"-O0\",\"-Wall\",\"-Wextra\",\"-Werror\"]},\"runtime\":{\"language\":\"c\",\"stdlib_implementation\":\"libc\",\"stdlib_version\":\"unknown\"},\"build\":{\"flags\":[\"-fno-ident\"],\"deterministic_mode\":true},\"hashing\":{\"algorithm\":\"fnv1a64\"},\"normalization\":{\"normalization_spec_version\":\"1.0.0\",\"normalization_engine_version\":\"0.1.0\"},\"interfaces\":{\"generator_interface_spec_version\":\"1.0.0\"},\"platform\":{\"os\":\"unknown\",\"arch\":\"unknown\"},\"subsystems\":{\"budget_compiler\":\"0.1.0\",\"static_analysis\":\"0.1.0\",\"harness\":\"0.1.0\"}}\n";
   if (write_text_file("toolchain_manifest.json", manifest) != 0) {
-    log_line(mode, "ERROR", "failed to write toolchain_manifest.json");
-    return 10;
+    fprintf(stderr, "failed to write toolchain_manifest.json\n");
+    return 1;
   }
-  log_line(mode, "INFO", "initialized toolchain manifest");
   printf("initialized toolchain manifest at toolchain_manifest.json\n");
   return 0;
 }
 
-static int command_run(int argc, char **argv, log_mode_t mode) {
+static int command_run(int argc, char **argv) {
   const char *contract_path = NULL;
   const char *ceilings_path = NULL;
   const char *exemptions_path = NULL;
@@ -150,29 +121,29 @@ static int command_run(int argc, char **argv, log_mode_t mode) {
   if (contract_path == NULL || ceilings_path == NULL || exemptions_path == NULL ||
       artifact_path == NULL) {
     print_usage();
-    return 11;
+    return 1;
   }
 
   if (read_file(contract_path, &contract, &contract_len) != 0 ||
       read_file(ceilings_path, &ceilings, &ceilings_len) != 0 ||
       read_file(exemptions_path, &exemptions, &exemptions_len) != 0 ||
       read_file(artifact_path, &artifact, &artifact_len) != 0) {
-    log_line(mode, "ERROR", "failed to load one or more input files");
+    fprintf(stderr, "failed to load one or more input files\n");
     free(contract);
     free(ceilings);
     free(exemptions);
     free(artifact);
-    return 12;
+    return 1;
   }
 
   norm_artifact = (uint8_t *)malloc(artifact_len + 1U);
   if (norm_artifact == NULL) {
-    log_line(mode, "ERROR", "out of memory");
+    fprintf(stderr, "out of memory\n");
     free(contract);
     free(ceilings);
     free(exemptions);
     free(artifact);
-    return 13;
+    return 1;
   }
 
   norm_len = normalization_canonicalize_text(
@@ -188,20 +159,20 @@ static int command_run(int argc, char **argv, log_mode_t mode) {
   freeze_inputs.exemption_manifest.normalized_bytes.bytes = exemptions;
   freeze_inputs.exemption_manifest.normalized_bytes.length =
       (freeze_u64_t)exemptions_len;
-  freeze_inputs.toolchain_version.bytes = "0.2.0";
+  freeze_inputs.toolchain_version.bytes = "0.1.0";
   freeze_inputs.toolchain_version.length = 5U;
 
   (void)freeze_compute_hash_hex(&freeze_inputs, freeze_hash);
 
   ledger = fopen(ledger_path, "wb");
   if (ledger == NULL) {
-    log_line(mode, "ERROR", "failed to open ledger output");
+    fprintf(stderr, "failed to open ledger output\n");
     free(contract);
     free(ceilings);
     free(exemptions);
     free(artifact);
     free(norm_artifact);
-    return 14;
+    return 1;
   }
 
   fprintf(ledger, "{\"event_type\":\"CONTRACT_ACCEPTED\"}\n");
@@ -214,7 +185,6 @@ static int command_run(int argc, char **argv, log_mode_t mode) {
   fprintf(ledger, "{\"event_type\":\"RUN_SUCCESS\"}\n");
   fclose(ledger);
 
-  log_line(mode, "INFO", "run completed successfully");
   printf("run completed successfully; ledger=%s freeze_hash=%s\n", ledger_path,
          freeze_hash);
 
@@ -226,90 +196,16 @@ static int command_run(int argc, char **argv, log_mode_t mode) {
   return 0;
 }
 
-static int command_ledger_replay(const char *ledger_path, log_mode_t mode) {
-  static const char *expected[] = {"CONTRACT_ACCEPTED", "BUDGET_DERIVED",
-                                   "GENERATION_ATTEMPTED",
-                                   "STATIC_ANALYSIS_PASSED", "ARTIFACT_FROZEN",
-                                   "RUN_SUCCESS"};
-  FILE *fp = fopen(ledger_path, "rb");
-  char line[1024];
-  int idx = 0;
-  if (fp == NULL) {
-    log_line(mode, "ERROR", "unable to open ledger for replay");
-    return 20;
-  }
-  while (fgets(line, sizeof(line), fp) != NULL) {
-    if (idx >= 6 || strstr(line, expected[idx]) == NULL) {
-      fclose(fp);
-      log_line(mode, "ERROR", "ledger grammar validation failed during replay");
-      return 21;
-    }
-    idx += 1;
-  }
-  fclose(fp);
-  if (idx != 6) {
-    log_line(mode, "ERROR", "ledger replay incomplete");
-    return 22;
-  }
-  log_line(mode, "INFO", "ledger replay validated");
-  printf("ledger replay successful: %s\n", ledger_path);
-  return 0;
-}
-
-static int command_run_diff(const char *left_path, const char *right_path,
-                            log_mode_t mode) {
-  uint8_t *left = NULL;
-  uint8_t *right = NULL;
-  size_t left_len = 0U;
-  size_t right_len = 0U;
-  if (read_file(left_path, &left, &left_len) != 0 ||
-      read_file(right_path, &right, &right_len) != 0) {
-    free(left);
-    free(right);
-    log_line(mode, "ERROR", "run diff input read failed");
-    return 30;
-  }
-  if (left_len == right_len && memcmp(left, right, left_len) == 0) {
-    log_line(mode, "INFO", "run diff: no differences");
-    printf("run diff: identical (%s == %s)\n", left_path, right_path);
-    free(left);
-    free(right);
-    return 0;
-  }
-
-  log_line(mode, "WARN", "run diff: ledger mismatch");
-  printf("run diff: different (%s != %s)\n", left_path, right_path);
-  free(left);
-  free(right);
-  return 31;
-}
-
 int main(int argc, char **argv) {
-  log_mode_t mode;
-  if (setlocale(LC_ALL, "C") == NULL) {
-    return 2;
-  }
-  mode = parse_log_mode(argc, argv);
   if (argc < 2) {
     print_usage();
     return 1;
   }
   if (strcmp(argv[1], "init") == 0) {
-    return command_init(mode);
+    return command_init();
   }
   if (strcmp(argv[1], "run") == 0) {
-    if (argc > 3 && strcmp(argv[2], "diff") == 0) {
-      if (argc < 5) {
-        print_usage();
-        return 1;
-      }
-      return command_run_diff(argv[3], argv[4], mode);
-    }
-    return command_run(argc, argv, mode);
-  }
-  if (strcmp(argv[1], "ledger") == 0 && argc > 3 &&
-      strcmp(argv[2], "replay") == 0) {
-    return command_ledger_replay(argv[3], mode);
+    return command_run(argc, argv);
   }
   print_usage();
   return 1;

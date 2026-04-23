@@ -111,10 +111,4 @@ gi_error_code_t gi_build_request_id(
 
 gi_error_code_t gi_validate_response(const gi_generator_response_t *response);
 
-
-gi_error_code_t gi_validate_response_for_request(
-    const gi_generator_response_t *response,
-    gi_string_t expected_request_id);
-
-
 #endif /* CORE_GENERATOR_INTERFACE_GENERATOR_INTERFACE_H */

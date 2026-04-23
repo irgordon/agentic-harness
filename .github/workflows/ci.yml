@@ -9,8 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Environment normalization
-        run: make env-normalize
       - name: Build
         run: make clean && make
       - name: Reproducible build
@@ -19,5 +17,3 @@ jobs:
         run: make test-unit
       - name: Integration replay test
         run: make test-integration
-      - name: Structured logging test
-        run: make test-logging
