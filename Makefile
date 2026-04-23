@@ -15,7 +15,7 @@ core/ledger/ledger.c
 CORE_OBJS := $(CORE_SRCS:.c=.o)
 CLI_BIN := harness_cli
 
-.PHONY: all clean
+.PHONY: all clean reproducible test-unit test-integration
 
 all: core/libdeterministic_core.a $(CLI_BIN)
 
@@ -27,6 +27,26 @@ $(CLI_BIN): core/harness/harness.o core/normalization/normalization.o core/freez
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+reproducible:
+	@set -eu; \
+	TMP_DIR="$$(mktemp -d)"; \
+	trap 'rm -rf "$$TMP_DIR"' EXIT; \
+	$(MAKE) clean >/dev/null; \
+	$(MAKE) all >/dev/null; \
+	cp core/libdeterministic_core.a "$$TMP_DIR/first.a"; \
+	cp $(CLI_BIN) "$$TMP_DIR/first_cli"; \
+	$(MAKE) clean >/dev/null; \
+	$(MAKE) all >/dev/null; \
+	cmp -s core/libdeterministic_core.a "$$TMP_DIR/first.a"; \
+	cmp -s $(CLI_BIN) "$$TMP_DIR/first_cli"; \
+	echo "reproducible build check passed"
+
+test-unit: all
+	./tests/unit/run_unit_tests.sh
+
+test-integration: all
+	./tests/integration/test_replay.sh
 
 clean:
 	rm -f $(CORE_OBJS) core/libdeterministic_core.a $(CLI_BIN)
