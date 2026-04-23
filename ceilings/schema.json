@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "max_lines_per_function",
+    "max_nesting_depth",
+    "max_cyclomatic_complexity",
+    "max_fan_out",
+    "max_file_size",
+    "max_public_surface",
+    "max_states",
+    "max_transitions_per_state"
+  ],
+  "properties": {
+    "max_lines_per_function": {"type": "integer", "minimum": 0},
+    "max_nesting_depth": {"type": "integer", "minimum": 0},
+    "max_cyclomatic_complexity": {"type": "integer", "minimum": 0},
+    "max_fan_out": {"type": "integer", "minimum": 0},
+    "max_file_size": {"type": "integer", "minimum": 0},
+    "max_public_surface": {"type": "integer", "minimum": 0},
+    "max_states": {"type": "integer", "minimum": 0},
+    "max_transitions_per_state": {"type": "integer", "minimum": 0}
+  }
+}

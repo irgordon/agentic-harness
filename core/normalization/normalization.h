@@ -90,4 +90,10 @@ typedef struct normalization_canonical_json_t {
   normalization_bytes_t normalized_bytes;
 } normalization_canonical_json_t;
 
+
+normalization_u64_t normalization_canonicalize_text(
+    normalization_bytes_t input,
+    uint8_t *out_bytes,
+    normalization_u64_t out_capacity);
+
 #endif /* CORE_NORMALIZATION_NORMALIZATION_H */

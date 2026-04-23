@@ -130,6 +130,23 @@ flowchart TD
 
 ---
 
+
+## Quickstart (Current Local Runner)
+
+```bash
+make
+./harness_cli init
+./harness_cli run \
+  --contract samples/contract.json \
+  --ceilings samples/ceilings.json \
+  --exemptions samples/exemptions.json \
+  --artifact core/ledger/ledger.c
+```
+
+This writes `toolchain_manifest.json` and a deterministic `run_ledger.jsonl` for local execution.
+
+---
+
 ## Who This Is For
 
 * Engineers building agentic coding systems
