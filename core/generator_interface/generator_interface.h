@@ -102,4 +102,19 @@ typedef struct gi_normalized_candidate_artifact_t {
   gi_bytes_t normalized_bytes;
 } gi_normalized_candidate_artifact_t;
 
+
+enum { GI_REQUEST_ID_HEX_LEN = 16U };
+
+gi_error_code_t gi_build_request_id(
+    const gi_generator_request_without_id_t *request_without_id,
+    char out_request_id[GI_REQUEST_ID_HEX_LEN + 1U]);
+
+gi_error_code_t gi_validate_response(const gi_generator_response_t *response);
+
+
+gi_error_code_t gi_validate_response_for_request(
+    const gi_generator_response_t *response,
+    gi_string_t expected_request_id);
+
+
 #endif /* CORE_GENERATOR_INTERFACE_GENERATOR_INTERFACE_H */

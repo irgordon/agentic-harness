@@ -119,4 +119,12 @@ typedef struct sae_failure_payload_t {
   sae_failure_details_t details;
 } sae_failure_payload_t;
 
+
+sae_error_code_t sae_evaluate_candidate(
+    const sae_normalized_candidate_artifact_t *artifact,
+    const sae_local_budget_t *budget,
+    const sae_contract_declared_counts_t *declared_counts,
+    sae_structural_metrics_t *out_metrics,
+    sae_failure_payload_t *out_failure);
+
 #endif /* CORE_STATIC_ANALYSIS_STATIC_ANALYSIS_H */

@@ -158,4 +158,11 @@ typedef struct budget_local_budget_t {
   budget_u64_t max_transitions_per_state;
 } budget_local_budget_t;
 
+
+budget_error_code_t budget_compile_local_budget(
+    const budget_contract_t *contract,
+    const budget_global_ceilings_t *ceilings,
+    const budget_exemption_manifest_t *manifest,
+    budget_local_budget_t *out_budget);
+
 #endif /* CORE_BUDGET_COMPILER_BUDGET_COMPILER_H */
