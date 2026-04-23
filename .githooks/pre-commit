@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[pre-commit] deterministic environment lock"
+make env-normalize >/dev/null
+
+echo "[pre-commit] deterministic reproducibility (fast)"
+make reproducible >/dev/null
+
+echo "[pre-commit] unit smoke"
+make test-unit >/dev/null
+
+echo "[pre-commit] integration smoke"
+make test-integration >/dev/null
+
+echo "[pre-commit] OK"
