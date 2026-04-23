@@ -48,4 +48,10 @@ typedef struct freeze_failure_payload_t {
   freeze_string_t error_code;
 } freeze_failure_payload_t;
 
+
+enum { FREEZE_HASH_HEX_LEN = 16U };
+
+freeze_u64_t freeze_compute_hash_hex(const freeze_inputs_t *inputs,
+                                     char out_hex[FREEZE_HASH_HEX_LEN + 1U]);
+
 #endif /* CORE_FREEZE_FREEZE_H */
