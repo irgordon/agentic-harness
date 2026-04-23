@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "exemption_id",
+      "artifact_id",
+      "scope",
+      "target",
+      "reason",
+      "max_lines_per_function_override",
+      "max_file_size_override"
+    ],
+    "properties": {
+      "exemption_id": {"type": "string"},
+      "artifact_id": {"type": "string"},
+      "scope": {"type": "string"},
+      "target": {"type": "string"},
+      "reason": {"type": "string"},
+      "max_lines_per_function_override": {"type": ["integer", "null"], "minimum": 0},
+      "max_file_size_override": {"type": ["integer", "null"], "minimum": 0}
+    }
+  }
+}
