@@ -61,6 +61,56 @@ static void harness_log(harness_log_ctx_t *ctx, const char *level,
           message);
 }
 
+typedef enum {
+  LOG_MODE_TEXT = 0,
+  LOG_MODE_JSON = 1
+} log_mode_t;
+
+typedef struct {
+  log_mode_t mode;
+  unsigned long long counter;
+} harness_log_ctx_t;
+
+static void harness_log_json_escaped(FILE *stream, const char *text) {
+  const unsigned char *p = (const unsigned char *)text;
+  while (p != NULL && *p != '\0') {
+    const unsigned char ch = *p++;
+    if (ch == '\"' || ch == '\\') {
+      fputc('\\', stream);
+      fputc((int)ch, stream);
+    } else if (ch == '\n') {
+      fputs("\\n", stream);
+    } else if (ch == '\r') {
+      fputs("\\r", stream);
+    } else if (ch == '\t') {
+      fputs("\\t", stream);
+    } else if (ch < 0x20U) {
+      fprintf(stream, "\\u%04x", (unsigned int)ch);
+    } else {
+      fputc((int)ch, stream);
+    }
+  }
+}
+
+static void harness_log(harness_log_ctx_t *ctx, const char *level,
+                        const char *message) {
+  if (ctx == NULL || level == NULL || message == NULL) {
+    return;
+  }
+  ctx->counter += 1ULL;
+  if (ctx->mode == LOG_MODE_JSON) {
+    fprintf(stderr, "{\"t\":%llu,\"level\":\"",
+            (unsigned long long)ctx->counter);
+    harness_log_json_escaped(stderr, level);
+    fputs("\",\"message\":\"", stderr);
+    harness_log_json_escaped(stderr, message);
+    fputs("\"}\n", stderr);
+    return;
+  }
+  fprintf(stderr, "[%llu] %s: %s\n", (unsigned long long)ctx->counter, level,
+          message);
+}
+
 static int read_file(const char *path, uint8_t **out_bytes, size_t *out_len) {
   FILE *fp;
   long n;
@@ -133,16 +183,9 @@ static int file_exists(const char *path) {
 static void print_usage(void) {
   fprintf(stdout,
           "Usage:\n"
-          "  harness_cli --help\n"
-          "  harness_cli --version\n"
-          "  harness_cli init\n"
-          "  harness_cli explain --ledger <file>\n"
-          "  harness_cli run [--config <file>] [--defaults <file>] [--contract <file>] [--ceilings <file>] [--exemptions <file>] "
+          "  harness init\n"
+          "  harness run --contract <file> --ceilings <file> --exemptions <file> "
           "--artifact <file> [--out-ledger <file>] [--log-json]\n");
-}
-
-static void print_version(void) {
-  printf("harness_version=0.1.0 spec_version=v1 toolchain_version=0.1.0 build_metadata_hash=0000000000000000\n");
 }
 
 static int command_init(void) {
@@ -201,37 +244,10 @@ static int command_run(int argc, char **argv) {
     } else if (strcmp(argv[i], "--out-ledger") == 0 && i + 1 < argc) {
       ledger_path = argv[++i];
     } else if (strcmp(argv[i], "--log-json") == 0) {
-      has_cli_log_json = 1;
-      cli_log_json = 1;
+      log_ctx.mode = LOG_MODE_JSON;
     } else {
       fprintf(stderr, "unknown argument: %s\n", argv[i]);
       return 1;
-    }
-  }
-
-  if (has_config_path == 0 && file_exists(config_path) != 0) {
-    has_config_path = 1;
-  }
-
-  if (config_load(&cfg, has_config_path ? config_path : NULL, defaults_path) != 0) {
-    fprintf(stderr, "config error: failed to load deterministic configuration\n");
-    return 2;
-  }
-
-  contract_path = cfg.contract_path;
-  ceilings_path = cfg.ceilings_path;
-  exemptions_path = cfg.exemptions_path;
-  if (cfg.logging_mode_json != 0) {
-    log_ctx.mode = LOG_MODE_JSON;
-  }
-
-  for (i = 2; i < argc; ++i) {
-    if (strcmp(argv[i], "--contract") == 0 && i + 1 < argc) {
-      contract_path = argv[i + 1];
-    } else if (strcmp(argv[i], "--ceilings") == 0 && i + 1 < argc) {
-      ceilings_path = argv[i + 1];
-    } else if (strcmp(argv[i], "--exemptions") == 0 && i + 1 < argc) {
-      exemptions_path = argv[i + 1];
     }
   }
 

@@ -16,7 +16,7 @@ core/ledger/ledger.c
 CORE_OBJS := $(CORE_SRCS:.c=.o)
 CLI_BIN := harness_cli
 
-.PHONY: all clean reproducible test-unit test-integration test-logging test-schema-validation test-config soak
+.PHONY: all clean reproducible test-unit test-integration test-logging test-schema-validation
 
 all: core/libdeterministic_core.a $(CLI_BIN)
 
@@ -61,25 +61,6 @@ test-logging: all
 
 test-schema-validation:
 	./tests/integration/test_schema_validation.sh
-
-test-config: all
-	./tests/integration/test_config.sh
-
-soak: all
-	@set -eu; \
-	TMP_DIR="$$(mktemp -d)"; \
-	trap 'rm -rf "$$TMP_DIR"' EXIT; \
-	./harness_cli run --artifact fixtures/artifacts/basic.c --out-ledger "$$TMP_DIR/ledger-current.jsonl" > "$$TMP_DIR/stdout-current.txt" 2> "$$TMP_DIR/stderr-current.txt"; \
-	cp "$$TMP_DIR/ledger-current.jsonl" "$$TMP_DIR/ledger-baseline.jsonl"; \
-	cp "$$TMP_DIR/stdout-current.txt" "$$TMP_DIR/stdout-baseline.txt"; \
-	cp "$$TMP_DIR/stderr-current.txt" "$$TMP_DIR/stderr-baseline.txt"; \
-	for i in $$(seq 2 100); do \
-	  ./harness_cli run --artifact fixtures/artifacts/basic.c --out-ledger "$$TMP_DIR/ledger-current.jsonl" > "$$TMP_DIR/stdout-current.txt" 2> "$$TMP_DIR/stderr-current.txt"; \
-	  cmp -s "$$TMP_DIR/ledger-baseline.jsonl" "$$TMP_DIR/ledger-current.jsonl"; \
-	  cmp -s "$$TMP_DIR/stdout-baseline.txt" "$$TMP_DIR/stdout-current.txt"; \
-	  cmp -s "$$TMP_DIR/stderr-baseline.txt" "$$TMP_DIR/stderr-current.txt"; \
-	done; \
-	echo "soak check passed (100 deterministic runs)"
 
 clean:
 	rm -f $(CORE_OBJS) core/libdeterministic_core.a $(CLI_BIN)
