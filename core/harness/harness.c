@@ -4,9 +4,60 @@
 #include "../generator_interface/generator_interface.h"
 #include "../normalization/normalization.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+typedef enum {
+  LOG_MODE_TEXT = 0,
+  LOG_MODE_JSON = 1
+} log_mode_t;
+
+typedef struct {
+  log_mode_t mode;
+  unsigned long long counter;
+} harness_log_ctx_t;
+
+static void harness_log_json_escaped(FILE *stream, const char *text) {
+  const unsigned char *p = (const unsigned char *)text;
+  while (p != NULL && *p != '\0') {
+    const unsigned char ch = *p++;
+    if (ch == '\"' || ch == '\\') {
+      fputc('\\', stream);
+      fputc((int)ch, stream);
+    } else if (ch == '\n') {
+      fputs("\\n", stream);
+    } else if (ch == '\r') {
+      fputs("\\r", stream);
+    } else if (ch == '\t') {
+      fputs("\\t", stream);
+    } else if (ch < 0x20U) {
+      fprintf(stream, "\\u%04x", (unsigned int)ch);
+    } else {
+      fputc((int)ch, stream);
+    }
+  }
+}
+
+static void harness_log(harness_log_ctx_t *ctx, const char *level,
+                        const char *message) {
+  if (ctx == NULL || level == NULL || message == NULL) {
+    return;
+  }
+  ctx->counter += 1ULL;
+  if (ctx->mode == LOG_MODE_JSON) {
+    fprintf(stderr, "{\"t\":%llu,\"level\":\"",
+            (unsigned long long)ctx->counter);
+    harness_log_json_escaped(stderr, level);
+    fputs("\",\"message\":\"", stderr);
+    harness_log_json_escaped(stderr, message);
+    fputs("\"}\n", stderr);
+    return;
+  }
+  fprintf(stderr, "[%llu] %s: %s\n", (unsigned long long)ctx->counter, level,
+          message);
+}
 
 static int read_file(const char *path, uint8_t **out_bytes, size_t *out_len) {
   FILE *fp;
@@ -69,7 +120,7 @@ static void print_usage(void) {
           "Usage:\n"
           "  harness init\n"
           "  harness run --contract <file> --ceilings <file> --exemptions <file> "
-          "--artifact <file> [--out-ledger <file>]\n");
+          "--artifact <file> [--out-ledger <file>] [--log-json]\n");
 }
 
 static int command_init(void) {
@@ -103,6 +154,7 @@ static int command_run(int argc, char **argv) {
   FILE *ledger;
   freeze_inputs_t freeze_inputs;
   char freeze_hash[FREEZE_HASH_HEX_LEN + 1U];
+  harness_log_ctx_t log_ctx = {LOG_MODE_TEXT, 0ULL};
 
   for (i = 2; i < argc; ++i) {
     if (strcmp(argv[i], "--contract") == 0 && i + 1 < argc) {
@@ -115,6 +167,11 @@ static int command_run(int argc, char **argv) {
       artifact_path = argv[++i];
     } else if (strcmp(argv[i], "--out-ledger") == 0 && i + 1 < argc) {
       ledger_path = argv[++i];
+    } else if (strcmp(argv[i], "--log-json") == 0) {
+      log_ctx.mode = LOG_MODE_JSON;
+    } else {
+      fprintf(stderr, "unknown argument: %s\n", argv[i]);
+      return 1;
     }
   }
 
@@ -123,6 +180,7 @@ static int command_run(int argc, char **argv) {
     print_usage();
     return 1;
   }
+  harness_log(&log_ctx, "INFO", "starting harness run");
 
   if (read_file(contract_path, &contract, &contract_len) != 0 ||
       read_file(ceilings_path, &ceilings, &ceilings_len) != 0 ||
@@ -187,6 +245,7 @@ static int command_run(int argc, char **argv) {
 
   printf("run completed successfully; ledger=%s freeze_hash=%s\n", ledger_path,
          freeze_hash);
+  harness_log(&log_ctx, "INFO", "harness run complete");
 
   free(contract);
   free(ceilings);
