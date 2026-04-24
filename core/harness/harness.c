@@ -3,10 +3,63 @@
 #include "../freeze/freeze.h"
 #include "../generator_interface/generator_interface.h"
 #include "../normalization/normalization.h"
+#include "../config/config.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+
+typedef enum {
+  LOG_MODE_TEXT = 0,
+  LOG_MODE_JSON = 1
+} log_mode_t;
+
+typedef struct {
+  log_mode_t mode;
+  unsigned long long counter;
+} harness_log_ctx_t;
+
+static void harness_log_json_escaped(FILE *stream, const char *text) {
+  const unsigned char *p = (const unsigned char *)text;
+  while (p != NULL && *p != '\0') {
+    const unsigned char ch = *p++;
+    if (ch == '\"' || ch == '\\') {
+      fputc('\\', stream);
+      fputc((int)ch, stream);
+    } else if (ch == '\n') {
+      fputs("\\n", stream);
+    } else if (ch == '\r') {
+      fputs("\\r", stream);
+    } else if (ch == '\t') {
+      fputs("\\t", stream);
+    } else if (ch < 0x20U) {
+      fprintf(stream, "\\u%04x", (unsigned int)ch);
+    } else {
+      fputc((int)ch, stream);
+    }
+  }
+}
+
+static void harness_log(harness_log_ctx_t *ctx, const char *level,
+                        const char *message) {
+  if (ctx == NULL || level == NULL || message == NULL) {
+    return;
+  }
+  ctx->counter += 1ULL;
+  if (ctx->mode == LOG_MODE_JSON) {
+    fprintf(stderr, "{\"t\":%llu,\"level\":\"",
+            (unsigned long long)ctx->counter);
+    harness_log_json_escaped(stderr, level);
+    fputs("\",\"message\":\"", stderr);
+    harness_log_json_escaped(stderr, message);
+    fputs("\"}\n", stderr);
+    return;
+  }
+  fprintf(stderr, "[%llu] %s: %s\n", (unsigned long long)ctx->counter, level,
+          message);
+}
 
 static int read_file(const char *path, uint8_t **out_bytes, size_t *out_len) {
   FILE *fp;
@@ -64,12 +117,32 @@ static int write_text_file(const char *path, const char *text) {
   return 0;
 }
 
+static int file_exists(const char *path) {
+  FILE *fp;
+  if (path == NULL) {
+    return 0;
+  }
+  fp = fopen(path, "rb");
+  if (fp == NULL) {
+    return 0;
+  }
+  fclose(fp);
+  return 1;
+}
+
 static void print_usage(void) {
-  fprintf(stderr,
+  fprintf(stdout,
           "Usage:\n"
-          "  harness init\n"
-          "  harness run --contract <file> --ceilings <file> --exemptions <file> "
-          "--artifact <file> [--out-ledger <file>]\n");
+          "  harness_cli --help\n"
+          "  harness_cli --version\n"
+          "  harness_cli init\n"
+          "  harness_cli explain --ledger <file>\n"
+          "  harness_cli run [--config <file>] [--defaults <file>] [--contract <file>] [--ceilings <file>] [--exemptions <file>] "
+          "--artifact <file> [--out-ledger <file>] [--log-json]\n");
+}
+
+static void print_version(void) {
+  printf("harness_version=0.1.0 spec_version=v1 toolchain_version=0.1.0 build_metadata_hash=0000000000000000\n");
 }
 
 static int command_init(void) {
@@ -84,11 +157,17 @@ static int command_init(void) {
 }
 
 static int command_run(int argc, char **argv) {
-  const char *contract_path = NULL;
-  const char *ceilings_path = NULL;
-  const char *exemptions_path = NULL;
+  harness_config_t cfg;
+  const char *contract_path;
+  const char *ceilings_path;
+  const char *exemptions_path;
   const char *artifact_path = NULL;
   const char *ledger_path = "run_ledger.jsonl";
+  const char *config_path = "config/local_config.json";
+  const char *defaults_path = "spec/v1/config_defaults.json";
+  int cli_log_json = 0;
+  int has_cli_log_json = 0;
+  int has_config_path = 0;
   int i;
   uint8_t *contract = NULL;
   uint8_t *ceilings = NULL;
@@ -103,9 +182,15 @@ static int command_run(int argc, char **argv) {
   FILE *ledger;
   freeze_inputs_t freeze_inputs;
   char freeze_hash[FREEZE_HASH_HEX_LEN + 1U];
+  harness_log_ctx_t log_ctx = {LOG_MODE_TEXT, 0ULL};
 
   for (i = 2; i < argc; ++i) {
-    if (strcmp(argv[i], "--contract") == 0 && i + 1 < argc) {
+    if (strcmp(argv[i], "--config") == 0 && i + 1 < argc) {
+      config_path = argv[++i];
+      has_config_path = 1;
+    } else if (strcmp(argv[i], "--defaults") == 0 && i + 1 < argc) {
+      defaults_path = argv[++i];
+    } else if (strcmp(argv[i], "--contract") == 0 && i + 1 < argc) {
       contract_path = argv[++i];
     } else if (strcmp(argv[i], "--ceilings") == 0 && i + 1 < argc) {
       ceilings_path = argv[++i];
@@ -115,14 +200,52 @@ static int command_run(int argc, char **argv) {
       artifact_path = argv[++i];
     } else if (strcmp(argv[i], "--out-ledger") == 0 && i + 1 < argc) {
       ledger_path = argv[++i];
+    } else if (strcmp(argv[i], "--log-json") == 0) {
+      has_cli_log_json = 1;
+      cli_log_json = 1;
+    } else {
+      fprintf(stderr, "unknown argument: %s\n", argv[i]);
+      return 1;
     }
   }
 
-  if (contract_path == NULL || ceilings_path == NULL || exemptions_path == NULL ||
-      artifact_path == NULL) {
+  if (has_config_path == 0 && file_exists(config_path) != 0) {
+    has_config_path = 1;
+  }
+
+  if (config_load(&cfg, has_config_path ? config_path : NULL, defaults_path) != 0) {
+    fprintf(stderr, "config error: failed to load deterministic configuration\n");
+    return 2;
+  }
+
+  contract_path = cfg.contract_path;
+  ceilings_path = cfg.ceilings_path;
+  exemptions_path = cfg.exemptions_path;
+  if (cfg.logging_mode_json != 0) {
+    log_ctx.mode = LOG_MODE_JSON;
+  }
+
+  for (i = 2; i < argc; ++i) {
+    if (strcmp(argv[i], "--contract") == 0 && i + 1 < argc) {
+      contract_path = argv[i + 1];
+    } else if (strcmp(argv[i], "--ceilings") == 0 && i + 1 < argc) {
+      ceilings_path = argv[i + 1];
+    } else if (strcmp(argv[i], "--exemptions") == 0 && i + 1 < argc) {
+      exemptions_path = argv[i + 1];
+    }
+  }
+
+  if (has_cli_log_json != 0 && cli_log_json != 0) {
+    log_ctx.mode = LOG_MODE_JSON;
+  }
+
+  if (contract_path == NULL || contract_path[0] == '\0' || ceilings_path == NULL ||
+      ceilings_path[0] == '\0' || exemptions_path == NULL ||
+      exemptions_path[0] == '\0' || artifact_path == NULL) {
     print_usage();
     return 1;
   }
+  harness_log(&log_ctx, "INFO", "starting harness run");
 
   if (read_file(contract_path, &contract, &contract_len) != 0 ||
       read_file(ceilings_path, &ceilings, &ceilings_len) != 0 ||
@@ -187,6 +310,7 @@ static int command_run(int argc, char **argv) {
 
   printf("run completed successfully; ledger=%s freeze_hash=%s\n", ledger_path,
          freeze_hash);
+  harness_log(&log_ctx, "INFO", "harness run complete");
 
   free(contract);
   free(ceilings);
@@ -196,16 +320,77 @@ static int command_run(int argc, char **argv) {
   return 0;
 }
 
+static int command_explain(int argc, char **argv) {
+  const char *ledger_path = NULL;
+  FILE *fp;
+  char line[512];
+  const char *terminal = "UNKNOWN";
+  const char *reason = "NONE";
+  int i;
+  for (i = 2; i < argc; ++i) {
+    if (strcmp(argv[i], "--ledger") == 0 && i + 1 < argc) {
+      ledger_path = argv[++i];
+    } else {
+      fprintf(stderr, "unknown argument: %s\n", argv[i]);
+      return 1;
+    }
+  }
+  if (ledger_path == NULL) {
+    print_usage();
+    return 1;
+  }
+  fp = fopen(ledger_path, "rb");
+  if (fp == NULL) {
+    fprintf(stderr, "failed to read ledger: %s\n", ledger_path);
+    return 1;
+  }
+  while (fgets(line, (int)sizeof(line), fp) != NULL) {
+    if (strstr(line, "\"RUN_SUCCESS\"") != NULL) {
+      terminal = "RUN_SUCCESS";
+    } else if (strstr(line, "\"RUN_ABORTED\"") != NULL) {
+      terminal = "RUN_ABORTED";
+    }
+    if (strstr(line, "_FAILED") != NULL) {
+      if (strstr(line, "STATIC_ANALYSIS_FAILED") != NULL) {
+        reason = "STATIC_ANALYSIS_FAILED";
+      } else if (strstr(line, "TESTS_FAILED") != NULL) {
+        reason = "TESTS_FAILED";
+      } else if (strstr(line, "FREEZE_FAILED") != NULL) {
+        reason = "FREEZE_FAILED";
+      } else if (strstr(line, "GENERATION_FAILED") != NULL) {
+        reason = "GENERATION_FAILED";
+      } else {
+        reason = "OTHER_FAILED";
+      }
+    }
+  }
+  fclose(fp);
+  printf("terminal=%s reason=%s schema_validation=unknown spec_negotiation=v1\n",
+         terminal, reason);
+  return 0;
+}
+
 int main(int argc, char **argv) {
   if (argc < 2) {
     print_usage();
     return 1;
+  }
+  if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "help") == 0) {
+    print_usage();
+    return 0;
+  }
+  if (strcmp(argv[1], "--version") == 0) {
+    print_version();
+    return 0;
   }
   if (strcmp(argv[1], "init") == 0) {
     return command_init();
   }
   if (strcmp(argv[1], "run") == 0) {
     return command_run(argc, argv);
+  }
+  if (strcmp(argv[1], "explain") == 0) {
+    return command_explain(argc, argv);
   }
   print_usage();
   return 1;

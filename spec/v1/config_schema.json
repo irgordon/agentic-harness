@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HarnessConfig",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["paths", "limits", "logging"],
+  "properties": {
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract", "ceilings", "exemptions", "artifact_dir", "runs_dir"],
+      "properties": {
+        "contract": { "type": "string" },
+        "ceilings": { "type": "string" },
+        "exemptions": { "type": "string" },
+        "artifact_dir": { "type": "string" },
+        "runs_dir": { "type": "string" }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["performance", "resources"],
+      "properties": {
+        "performance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["max_normalization_ms", "max_static_analysis_ms", "max_freeze_ms", "max_generator_validation_ms"],
+          "properties": {
+            "max_normalization_ms": { "type": "integer", "minimum": 1 },
+            "max_static_analysis_ms": { "type": "integer", "minimum": 1 },
+            "max_freeze_ms": { "type": "integer", "minimum": 1 },
+            "max_generator_validation_ms": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["max_bytes_normalization", "max_bytes_static_analysis", "max_bytes_freeze", "max_open_fds"],
+          "properties": {
+            "max_bytes_normalization": { "type": "integer", "minimum": 1 },
+            "max_bytes_static_analysis": { "type": "integer", "minimum": 1 },
+            "max_bytes_freeze": { "type": "integer", "minimum": 1 },
+            "max_open_fds": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "logging": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["text", "json"] }
+      }
+    }
+  }
+}

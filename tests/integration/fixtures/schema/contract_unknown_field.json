@@ -1,0 +1,1 @@
+{"artifact_id":"sample-artifact","artifact_kind":"adapter","public_surface_target":1,"is_stateful":false,"has_io":false,"has_concurrency":false,"declared_state_count":0,"declared_transition_count":0,"declared_invariant_count":0,"test_obligation_class":"light","unexpected":true}

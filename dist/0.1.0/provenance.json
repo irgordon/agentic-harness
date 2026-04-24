@@ -1,0 +1,13 @@
+{
+  "version": "0.1.0",
+  "git_tree_hash": "UNKNOWN",
+  "spec_version": "v1",
+  "build_metadata_hash": "0000000000000000",
+  "schema_hashes": {
+    "contract": "UNKNOWN",
+    "ceilings": "UNKNOWN",
+    "exemptions": "UNKNOWN",
+    "config": "UNKNOWN"
+  },
+  "ledger_grammar_hash": "UNKNOWN"
+}

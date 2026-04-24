@@ -1,0 +1,26 @@
+{
+  "paths": {
+    "contract": "fixtures/contracts/basic.json",
+    "ceilings": "fixtures/ceilings/basic.json",
+    "exemptions": "fixtures/exemptions/basic.json",
+    "artifact_dir": "fixtures/artifacts",
+    "runs_dir": "runs"
+  },
+  "limits": {
+    "performance": {
+      "max_normalization_ms": 50,
+      "max_static_analysis_ms": 100,
+      "max_freeze_ms": 50,
+      "max_generator_validation_ms": 50
+    },
+    "resources": {
+      "max_bytes_normalization": 262144,
+      "max_bytes_static_analysis": 262144,
+      "max_bytes_freeze": 262144,
+      "max_open_fds": 32
+    }
+  },
+  "logging": {
+    "mode": "text"
+  }
+}

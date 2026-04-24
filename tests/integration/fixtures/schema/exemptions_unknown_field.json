@@ -1,0 +1,1 @@
+[{"exemption_id":"ex-1","artifact_id":"sample-artifact","scope":"function","target":"sample_fn","reason":"temporary","max_lines_per_function_override":140,"max_file_size_override":1400,"unexpected":true}]
