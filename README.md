@@ -127,11 +127,8 @@ flowchart TD
 ```bash
 make
 ./harness_cli init
-./harness_cli run \
-  --contract samples/contract.json \
-  --ceilings samples/ceilings.json \
-  --exemptions samples/exemptions.json \
-  --artifact core/ledger/ledger.c
+./harness_cli run --artifact fixtures/artifacts/basic.c
+./harness_cli explain --ledger run_ledger.jsonl
 ```
 
 This writes `toolchain_manifest.json` and a deterministic `run_ledger.jsonl` for local execution.

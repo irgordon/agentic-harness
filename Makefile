@@ -9,6 +9,7 @@ core/static_analysis/static_analysis.c \
 core/normalization/normalization.c \
 core/freeze/freeze.c \
 core/harness/harness.c \
+core/config/config.c \
 core/generator_interface/generator_interface.c \
 core/ledger/ledger.c
 
@@ -22,7 +23,7 @@ all: core/libdeterministic_core.a $(CLI_BIN)
 core/libdeterministic_core.a: $(CORE_OBJS)
 	$(AR) $(ARFLAGS) $@ $(CORE_OBJS)
 
-$(CLI_BIN): core/harness/harness.o core/normalization/normalization.o core/freeze/freeze.o core/generator_interface/generator_interface.o
+$(CLI_BIN): core/harness/harness.o core/normalization/normalization.o core/freeze/freeze.o core/config/config.o core/generator_interface/generator_interface.o
 	$(CC) $(CFLAGS) $^ -o $@
 
 %.o: %.c

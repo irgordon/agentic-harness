@@ -1,0 +1,20 @@
+{
+  "version": "v1",
+  "reserved_ranges": [
+    {"prefix": "HARNESS_E_", "owner": "harness"},
+    {"prefix": "BUDGET_E_", "owner": "budget_compiler"},
+    {"prefix": "SAE_E_", "owner": "static_analysis"},
+    {"prefix": "GEN_E_", "owner": "generator_interface"}
+  ],
+  "codes": [
+    {"code": "E_CONFIG_MISSING", "meaning": "required deterministic config value missing"},
+    {"code": "E_CONFIG_INVALID", "meaning": "config failed deterministic validation"},
+    {"code": "HARNESS_E_INVALID_STATE", "meaning": "invalid harness state transition"},
+    {"code": "HARNESS_E_MAX_ATTEMPTS_EXCEEDED", "meaning": "attempt budget exhausted"}
+  ],
+  "evolution_rules": [
+    "codes are append-only",
+    "existing meanings are immutable",
+    "new prefixes require spec revision"
+  ]
+}

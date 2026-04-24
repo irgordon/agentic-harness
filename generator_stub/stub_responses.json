@@ -1,0 +1,7 @@
+[
+  {
+    "request_id": "0000000000000000",
+    "status": "success",
+    "candidate_artifact": "int main(void){return 0;}"
+  }
+]
