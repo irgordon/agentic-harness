@@ -101,13 +101,13 @@ Everything is recorded in the **Ledger**, so you can replay, audit, or debug any
 
 ```mermaid
 flowchart TD
-    Input["HUMAN / SYSTEM\nProvides Contract"] --> Contract["CONTRACT + CEILINGS + EXEMPTIONS"]
+    Input["HUMAN / SYSTEM<br>Provides Contract"] --> Contract["CONTRACT + CEILINGS + EXEMPTIONS"]
     Contract --> Budget["BUDGET COMPILER → local_budget"]
     Budget --> Harness["HARNESS (deterministic)"]
     
-    subgraph ATTEMPT_LOOP ["ATTEMPT LOOP"]
+    subgraph ATTEMPT_LOOP [ATTEMPT LOOP]
         direction TB
-        Gen["GENERATION_ATTEMPT (agent)"] --> Ver["VERIFICATION_ATTEMPT\n(budget + static analysis + tests)"]
+        Gen["GENERATION_ATTEMPT (agent)"] --> Ver["VERIFICATION_ATTEMPT<br>(budget + static analysis + tests)"]
         Ver -- "failure" --> Gen
     end
     
