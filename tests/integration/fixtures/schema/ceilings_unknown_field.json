@@ -1,0 +1,1 @@
+{"max_lines_per_function":120,"max_nesting_depth":6,"max_cyclomatic_complexity":12,"max_fan_out":16,"max_file_size":1200,"max_public_surface":12,"max_states":8,"max_transitions_per_state":12,"unexpected":1}

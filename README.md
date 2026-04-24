@@ -179,7 +179,7 @@ The best way to begin is to read the specs in `docs/`.
 They’re written to be clear, explicit, and mechanically enforceable.
 
 Start with:
-* `ARCHITECTURE_DOCUMENT.md`
+* `ARCHITECTURE.md`
 * `RUN_MODEL.md`
 * `HARNESS.md`
 
